@@ -1,0 +1,48 @@
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">
+            <i class="bi bi-clipboard-check"></i> Verificación de Recetas
+          </h2>
+        </div>
+        <div class="card-body">
+          <p class="card-text text-muted mb-4">
+            Ingrese el código de su receta médica para verificar su validez y acceder a medicamentos con prescripción.
+          </p>
+
+          <div class="alert alert-{{ isError ? 'danger' : 'info' }}" *ngIf="message">
+            <i class="bi bi-{{ isError ? 'exclamation-triangle' : 'info-circle' }}"></i> {{ message }}
+          </div>
+
+          <form (ngSubmit)="verifyPrescription()">
+            <div class="mb-3">
+              <label for="prescriptionCode" class="form-label">Código de Receta</label>
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-upc-scan"></i>
+                </span>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="prescriptionCode"
+                  placeholder="Ej. RX-123456789"
+                  [(ngModel)]="prescriptionCode"
+                  name="prescriptionCode"
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Verificar Receta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+  </div>
+</div>

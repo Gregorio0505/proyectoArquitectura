@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  oracle-xe-dev:
+    image: gvenzl/oracle-xe:latest
+    container_name: oracle-xe-dev-pharmacy
+    environment:
+      - ORACLE_PASSWORD=LocalOraclePass2
+    ports:
+      - "1523:1521"    
+    volumes:
+      - ./oracle-data-dev:/opt/oracle/oradata
+      - ./db-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - oracle-xe-net
+networks:
+  oracle-xe-net:
+    external: true
+
+

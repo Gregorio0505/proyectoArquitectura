@@ -1,0 +1,52 @@
+#.DS_Store
+#oracle-data-dev/
+#.env
+#.env.local
+#.env.*.local
+#*.swp
+#*.swo
+#*.swn
+#node_modules/
+#*.log
+#*.out
+#dist/
+#.angular/cache/
+
+#.vscode/
+#.idea/
+#coverage/
+
+
+# General
+.DS_Store
+Thumbs.db
+*.log
+*.out
+*.zip
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Directorios generados
+node_modules/
+dist/
+.angular/cache/
+.vscode/
+.idea/
+coverage/
+
+# Oracle y DB local
+oracle-data-dev/
+
+# Java/Maven
+/pharmacy/target/
+
+# SonarQube
+.scannerwork/
+
+# Swap/backup files
+*.swp
+*.swo
+*.swn
