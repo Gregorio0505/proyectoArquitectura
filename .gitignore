@@ -39,6 +39,8 @@ coverage/
 
 # Oracle y DB local
 oracle-data-dev/
+oracle-data-prod/
+oracle-data-qa/
 
 # Java/Maven
 /pharmacy/target/
