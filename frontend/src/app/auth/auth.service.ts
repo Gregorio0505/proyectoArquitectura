@@ -9,13 +9,13 @@ export class AuthService {
 
   login(credentials: { correo: string; password: string }): Observable<any> {
     console.log('AuthService: Attempting login for user:', credentials.correo);
-    console.log('AuthService: API URL:', `${environment.apiUrl}/api/auth/login`);
+    console.log('AuthService: API URL:', `${environment.apiUrl}/auth/login`);
 
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
 
-    return this.http.post<any>(`${environment.apiUrl}/api/auth/login`, credentials, { headers }).pipe(
+    return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials, { headers }).pipe(
       tap(
         response => {
           console.log('AuthService: Login successful');
@@ -47,13 +47,13 @@ export class AuthService {
 
   register(data: { correo: string; password: string; nombre?: string }): Observable<any> {
     console.log('AuthService: Attempting registration for user:', data.correo);
-    console.log('AuthService: API URL:', `${environment.apiUrl}/api/auth/register`);
+    console.log('AuthService: API URL:', `${environment.apiUrl}/auth/register`);
 
     const headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
 
-    return this.http.post<any>(`${environment.apiUrl}/api/auth/register`, data, { headers }).pipe(
+    return this.http.post<any>(`${environment.apiUrl}/auth/register`, data, { headers }).pipe(
       tap(
         response => {
           console.log('AuthService: Registration successful');
@@ -85,7 +85,7 @@ export class AuthService {
   verifyEmail(token: string): Observable<any> {
     console.log('AuthService: Verifying email with token');
 
-    return this.http.get<any>(`${environment.apiUrl}/api/auth/verify-email?token=${token}`).pipe(
+    return this.http.get<any>(`${environment.apiUrl}/auth/verify-email?token=${token}`).pipe(
       tap(
         response => {
           console.log('AuthService: Email verification successful');
@@ -108,7 +108,7 @@ export class AuthService {
       'Authorization': `Bearer ${this.getToken()}`
     });
 
-    return this.http.post<any>(`${environment.apiUrl}/api/auth/complete-profile`, data, { headers }).pipe(
+    return this.http.post<any>(`${environment.apiUrl}/auth/complete-profile`, data, { headers }).pipe(
       tap(
         response => {
           console.log('AuthService: Profile completion successful');

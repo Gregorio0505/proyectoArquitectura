@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class ComentarioService {
-  private apiUrl = `${environment.apiUrl}/api/comentarios`;
+  private apiUrl = `${environment.apiUrl}/comentarios`;
 
   constructor(private http: HttpClient) { }
 

@@ -1,19 +1,68 @@
+#version: "3.8"
+#services:
+#  oracle-xe-dev:
+#    image: gvenzl/oracle-xe:latest
+#    container_name: oracle-xe-dev-pharmacy
+#    environment:
+#      - ORACLE_PASSWORD=LocalOraclePass2
+#    ports:
+#      - "1523:1521"    
+#    volumes:
+#      - ./oracle-data-dev:/opt/oracle/oradata
+#      - ./db-scripts:/docker-entrypoint-initdb.d
+#    networks:
+#      - oracle-xe-net
+#networks:
+#  oracle-xe-net:
+#    external: true
+
+
 version: "3.8"
 services:
+  # Base de datos Oracle para dev
   oracle-xe-dev:
     image: gvenzl/oracle-xe:latest
     container_name: oracle-xe-dev-pharmacy
     environment:
       - ORACLE_PASSWORD=LocalOraclePass2
     ports:
-      - "1523:1521"    
+      - "1523:1521"
     volumes:
       - ./oracle-data-dev:/opt/oracle/oradata
       - ./db-scripts:/docker-entrypoint-initdb.d
     networks:
-      - oracle-xe-net
+      - pharmacy-dev-net
+
+  # Backend para dev
+  backend-dev:
+    build:
+      context: ./pharmacy
+      dockerfile: Dockerfile
+    container_name: backend-dev-pharmacy
+    ports:
+      - "8082:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - oracle-xe-dev
+    networks:
+      - pharmacy-dev-net
+
+  # Frontend para dev
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        CONFIG: development
+    container_name: frontend-dev-pharmacy
+    ports:
+      - "4300:80"
+    depends_on:
+      - backend-dev
+    networks:
+      - pharmacy-dev-net
+
 networks:
-  oracle-xe-net:
-    external: true
-
-
+  pharmacy-dev-net:
+    external: false

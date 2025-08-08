@@ -24,7 +24,7 @@ interface FacturaDTO {
   providedIn: "root",
 })
 export class CheckoutService {
-  private apiUrl = `${environment.apiUrl}/api/checkout`;
+  private apiUrl = `${environment.apiUrl}/checkout`;
 
   constructor(
     private http: HttpClient,

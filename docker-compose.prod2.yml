@@ -1,3 +1,21 @@
+#version: "3.8"
+#services:
+#  oracle-xe-prod:
+#    image: gvenzl/oracle-xe:latest
+#    container_name: oracle-xe-prod-pharmacy
+#    environment:
+#      - ORACLE_PASSWORD=LocalOraclePass2
+#    ports:
+#      - "1525:1521"    
+#    volumes:
+#      - ./oracle-data-prod:/opt/oracle/oradata
+#      - ./db-scripts:/docker-entrypoint-initdb.d
+#    networks:
+#      - oracle-xe-net
+#networks:
+#  oracle-xe-net:
+#    external: true
+
 version: "3.8"
 services:
   # Base de datos Oracle para prod
@@ -12,7 +30,7 @@ services:
       - ./oracle-data-prod:/opt/oracle/oradata
       - ./db-scripts:/docker-entrypoint-initdb.d
     networks:
-      - pharmacy-prod-net
+      - pharmacy-net
 
   # Backend para prod
   backend-prod:
@@ -27,23 +45,22 @@ services:
     depends_on:
       - oracle-xe-prod
     networks:
-      - pharmacy-prod-net
+      - pharmacy-net
 
   # Frontend para prod
   frontend-prod:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        CONFIG: production
     container_name: frontend-prod-pharmacy
     ports:
-      - "4302:80"
+      - "4200:80"
     depends_on:
       - backend-prod
     networks:
-      - pharmacy-prod-net
+      - pharmacy-net
 
 networks:
-  pharmacy-prod-net:
+  pharmacy-net:
     external: false
+

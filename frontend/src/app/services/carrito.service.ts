@@ -9,7 +9,7 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class CarritoService {
-  private apiUrl = `${environment.apiUrl}/api/carrito`;
+  private apiUrl = `${environment.apiUrl}/carrito`;
 
   constructor(private http: HttpClient) { }
 
