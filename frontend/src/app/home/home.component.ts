@@ -26,7 +26,7 @@ export class HomeComponent implements OnInit {
   }
 
   private loadLatestMedicamentos(): void {
-    this.medicamentos$ = this.http.get<Medicamento[]>(`${environment.apiUrl}/medicamentos/latest`).pipe(
+    this.medicamentos$ = this.http.get<Medicamento[]>(`${environment.apiUrl}/api/medicamentos/latest`).pipe(
       map(medicamentos => {
         console.log('Latest medications loaded:', medicamentos);
         return medicamentos.map(med => this.transformFromApi(med));
