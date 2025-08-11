@@ -4,7 +4,7 @@ pipeline {
   environment {
     JAVA_HOME    = tool name: 'JDK17', type: 'hudson.model.JDK'
     MAVEN_HOME   = tool name: 'Maven3.8.7', type: 'hudson.tasks.Maven$MavenInstallation'
-    NODEJS_HOME  = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+    NODEJS_HOME  = tool name: 'Node23.7.0', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
     SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
     PATH         = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${NODEJS_HOME}/bin:${SCANNER_HOME}/bin:${env.PATH}"
     SONAR_SERVER = 'SonarQube'
