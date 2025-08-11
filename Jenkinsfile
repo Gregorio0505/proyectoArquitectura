@@ -1,34 +1,43 @@
 pipeline {
   agent any
+
   environment {
-    JAVA_HOME   = tool name: 'JDK17', type: 'hudson.model.JDK'
-    MAVEN_HOME  = tool name: 'Maven3.9', type: 'hudson.tasks.Maven$MavenInstallation'
-    NODEJS_HOME = tool name: 'Node18', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-    PATH        = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${NODEJS_HOME}/bin:${env.PATH}"
+    JAVA_HOME    = tool name: 'JDK17', type: 'hudson.model.JDK'
+    MAVEN_HOME   = tool name: 'Maven3.9', type: 'hudson.tasks.Maven$MavenInstallation'
+    NODEJS_HOME  = tool name: 'Node18', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+    SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+    PATH         = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${NODEJS_HOME}/bin:${SCANNER_HOME}/bin:${env.PATH}"
     SONAR_SERVER = 'SonarQube'
   }
-  options { timestamps(); ansiColor('xterm') }
+
+  options { timestamps() } // <- quitamos ansiColor
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') {
+      steps { checkout scm }
+    }
 
-    stage('Set Sonar Keys by Branch') {
+    stage('Resolver branch y projectKeys de Sonar') {
       steps {
         script {
-          def b = env.BRANCH_NAME
-          if (!(b in ['dev','uat','master'])) { b = 'dev' }   // feature/* cuentan como dev
+          def b = env.BRANCH_NAME ?: 'dev'
+          if (!(b in ['dev','uat','master'])) { b = 'dev' } // feature/* -> dev
+
           env.SONAR_KEY_BE = (b=='dev') ? 'pharmacy-backend-dev' :
                              (b=='uat') ? 'pharmacy-backend-qa'  :
                                          'pharmacy-backend-main'
+
           env.SONAR_KEY_FE = (b=='dev') ? 'pharmacy-frontend-dev' :
                              (b=='uat') ? 'pharmacy-frontend-qa'  :
                                          'pharmacy-frontend-main'
+
           env.BUILD_VER = "${env.BUILD_NUMBER}"
+          echo "BRANCH=${b} | BE=${env.SONAR_KEY_BE} | FE=${env.SONAR_KEY_FE} | VER=${env.BUILD_VER}"
         }
       }
     }
 
-    stage('Backend - Build, Test & Sonar') {
+    stage('Backend - Build, Tests y Sonar') {
       steps {
         dir('pharmacy') {
           withSonarQubeEnv("${SONAR_SERVER}") {
@@ -46,7 +55,7 @@ pipeline {
       steps {
         timeout(time: 10, unit: 'MINUTES') {
           script {
-            def qg = waitForQualityGate()   // requiere webhook Sonar→Jenkins
+            def qg = waitForQualityGate() // requiere webhook Sonar->Jenkins
             if (qg.status != 'OK') error "Quality Gate FAILED (Backend): ${qg.status}"
           }
         }
@@ -55,19 +64,17 @@ pipeline {
 
     stage('Frontend - Build & Sonar (sin tests)') {
       steps {
-        dir('Frontend') {
-          sh "npm ci && npm run build -- --configuration=production"
+        dir('frontend') {
+          sh "npm ci"
+          sh "npm run build -- --configuration=production"
         }
-        script {
-          def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-          withSonarQubeEnv("${SONAR_SERVER}") {
-            sh """
-              cd Frontend
-              "${scannerHome}/bin/sonar-scanner" \
-                -Dsonar.projectKey=${SONAR_KEY_FE} \
-                -Dsonar.projectVersion=${BUILD_VER}
-            """
-          }
+        withSonarQubeEnv("${SONAR_SERVER}") {
+          sh """
+            cd frontend
+            sonar-scanner \
+              -Dsonar.projectKey=${SONAR_KEY_FE} \
+              -Dsonar.projectVersion=${BUILD_VER}
+          """
         }
       }
     }
@@ -79,17 +86,6 @@ pipeline {
             def qg = waitForQualityGate()
             if (qg.status != 'OK') error "Quality Gate FAILED (Frontend): ${qg.status}"
           }
-        }
-      }
-    }
-
-    stage('Deploy por rama') {
-      when { anyOf { branch 'dev'; branch 'uat'; branch 'master' } }
-      steps {
-        script {
-          if (env.BRANCH_NAME == 'dev')      { sh './deploy/dev/deploy.sh' }
-          else if (env.BRANCH_NAME == 'uat') { sh './deploy/uat/deploy.sh' }
-          else                                { sh './deploy/prod/deploy.sh' }
         }
       }
     }
