@@ -10,11 +10,26 @@ pipeline {
     SONAR_SERVER = 'SonarQube'
   }
 
-  options { timestamps() } // <- quitamos ansiColor
+  options { timestamps() }
 
   stages {
     stage('Checkout') {
       steps { checkout scm }
+    }
+
+    stage('Verificar Java y Maven') {
+      steps {
+        script {
+          sh """
+            echo "=== Verificando versiones ==="
+            echo "JAVA_HOME: ${JAVA_HOME}"
+            echo "MAVEN_HOME: ${MAVEN_HOME}"
+            java -version
+            mvn -version
+            echo "=== Fin verificación ==="
+          """
+        }
+      }
     }
 
     stage('Resolver branch y projectKeys de Sonar') {
@@ -42,9 +57,13 @@ pipeline {
         dir('pharmacy') {
           withSonarQubeEnv("${SONAR_SERVER}") {
             sh """
+              export JAVA_HOME="${JAVA_HOME}"
+              export PATH="${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
               mvn -B clean verify sonar:sonar \
                 -Dsonar.projectKey=${SONAR_KEY_BE} \
-                -Dsonar.projectVersion=${BUILD_VER}
+                -Dsonar.projectVersion=${BUILD_VER} \
+                -Dmaven.compiler.source=17 \
+                -Dmaven.compiler.target=17
             """
           }
         }
