@@ -17,6 +17,51 @@ pipeline {
       steps { checkout scm }
     }
 
+    stage('Verificar Herramientas Disponibles') {
+      steps {
+        script {
+          echo "=== Verificando herramientas disponibles ==="
+          
+          // Listar todas las herramientas disponibles
+          def tools = Jenkins.instance.getExtensionList('hudson.tools.ToolDescriptor')
+          tools.each { tool ->
+            echo "Herramienta disponible: ${tool.getDisplayName()}"
+          }
+          
+          // Verificar herramientas específicas
+          try {
+            def javaTool = tool name: 'JDK17', type: 'hudson.model.JDK'
+            echo "✅ JDK17 encontrado: ${javaTool}"
+          } catch (Exception e) {
+            echo "❌ JDK17 no encontrado: ${e.message}"
+          }
+          
+          try {
+            def mavenTool = tool name: 'Maven3.8.7', type: 'hudson.tasks.Maven$MavenInstallation'
+            echo "✅ Maven3.8.7 encontrado: ${mavenTool}"
+          } catch (Exception e) {
+            echo "❌ Maven3.8.7 no encontrado: ${e.message}"
+          }
+          
+          try {
+            def nodeTool = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+            echo "✅ NodeJS encontrado: ${nodeTool}"
+          } catch (Exception e) {
+            echo "❌ NodeJS no encontrado: ${e.message}"
+          }
+          
+          try {
+            def scannerTool = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+            echo "✅ SonarScanner encontrado: ${scannerTool}"
+          } catch (Exception e) {
+            echo "❌ SonarScanner no encontrado: ${e.message}"
+          }
+          
+          echo "=== Fin verificación de herramientas ==="
+        }
+      }
+    }
+
     stage('Verificar Herramientas') {
       steps {
         script {

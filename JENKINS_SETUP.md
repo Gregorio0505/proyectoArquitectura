@@ -2,7 +2,7 @@
 
 ## 🔧 **Problema Identificado**
 
-El error `JAVA_HOME: null` indica que las herramientas de Jenkins no están configuradas correctamente.
+El error `No jenkins.plugins.nodejs.tools.NodeJSInstallation named NodeJS found` indica que la herramienta Node.js no está configurada correctamente en Jenkins.
 
 ## 📋 **Herramientas Requeridas en Jenkins**
 
@@ -47,22 +47,41 @@ El error `JAVA_HOME: null` indica que las herramientas de Jenkins no están conf
   - **Name**: `SonarScanner`
   - **SONAR_RUNNER_HOME**: Ruta donde esté instalado SonarScanner
 
-## 🚀 **Alternativas de Configuración**
+## 🚀 **Opciones de Configuración**
 
-### **Opción 1: Usar Jenkinsfile Original (Recomendado)**
+### **Opción 1: Jenkinsfile con Verificación de Herramientas (Recomendado para Debug)**
 ```bash
-# Usar el Jenkinsfile principal después de configurar las herramientas
+# Usar el Jenkinsfile principal que verifica todas las herramientas
 git add Jenkinsfile
-git commit -m "Jenkinsfile configurado con herramientas de Jenkins"
+git commit -m "Jenkinsfile con verificación de herramientas"
 git push origin dev
 ```
 
-### **Opción 2: Usar Jenkinsfile Simplificado**
+**Ventajas**: 
+- ✅ Detecta problemas específicos de configuración
+- ✅ Muestra qué herramientas están disponibles
+- ✅ Ideal para diagnosticar problemas
+
+### **Opción 2: Jenkinsfile Simplificado (Recomendado para Producción)**
 ```bash
 # Usar el Jenkinsfile que usa herramientas del sistema
-cp Jenkinsfile.simple Jenkinsfile
+cp Jenkinsfile.system Jenkinsfile
 git add Jenkinsfile
 git commit -m "Jenkinsfile simplificado usando herramientas del sistema"
+git push origin dev
+```
+
+**Ventajas**:
+- ✅ No depende de configuración de Jenkins Tools
+- ✅ Usa herramientas del sistema directamente
+- ✅ Más confiable y simple
+
+### **Opción 3: Jenkinsfile Alternativo (Para casos específicos)**
+```bash
+# Usar el Jenkinsfile alternativo
+cp Jenkinsfile.alternative Jenkinsfile
+git add Jenkinsfile
+git commit -m "Jenkinsfile alternativo"
 git push origin dev
 ```
 
@@ -74,8 +93,9 @@ git push origin dev
 3. Verificar que los nombres coincidan exactamente con los del Jenkinsfile
 
 ### **En el Pipeline:**
-1. El stage "Verificar Herramientas" debe mostrar todas las rutas correctamente
-2. El stage "Verificar Java y Maven" debe ejecutar los comandos sin errores
+1. El stage "Verificar Herramientas Disponibles" debe mostrar todas las herramientas
+2. El stage "Verificar Herramientas" debe mostrar todas las rutas correctamente
+3. El stage "Verificar Java y Maven" debe ejecutar los comandos sin errores
 
 ## 📝 **Comandos de Verificación en Jenkins**
 
@@ -95,17 +115,20 @@ ${NODEJS_HOME}/bin/npm --version
 
 ## ❌ **Errores Comunes y Soluciones**
 
-### **Error: "No such property: JAVA_HOME"**
-- **Causa**: La herramienta JDK17 no está configurada
-- **Solución**: Configurar JDK17 en Jenkins Tools
+### **Error: "No jenkins.plugins.nodejs.tools.NodeJSInstallation named NodeJS found"**
+- **Causa**: La herramienta Node.js no está configurada o el nombre no coincide
+- **Solución**: 
+  1. Verificar que el plugin NodeJS esté instalado
+  2. Verificar que la herramienta se llame exactamente `NodeJS`
+  3. Usar Jenkinsfile simplificado como alternativa
 
 ### **Error: "Maven3.8.7 no está configurado en Jenkins"**
 - **Causa**: El nombre de la herramienta no coincide
 - **Solución**: Verificar que el nombre sea exactamente `Maven3.8.7`
 
-### **Error: "NodeJS no está configurado en Jenkins"**
+### **Error: "JDK17 no está configurado en Jenkins"**
 - **Causa**: El nombre de la herramienta no coincide
-- **Solución**: Verificar que el nombre sea exactamente `NodeJS`
+- **Solución**: Verificar que el nombre sea exactamente `JDK17`
 
 ### **Error: "null/bin/java: not found"**
 - **Causa**: JAVA_HOME es null
@@ -113,16 +136,22 @@ ${NODEJS_HOME}/bin/npm --version
 
 ## 🔄 **Flujo de Trabajo Recomendado**
 
-1. **Configurar todas las herramientas** en Jenkins Tools
-2. **Verificar nombres exactos** de las herramientas
-3. **Usar Jenkinsfile principal** con herramientas de Jenkins
-4. **Ejecutar pipeline** y verificar que funcione
-5. **Si hay problemas**, usar Jenkinsfile simplificado como fallback
+### **Para Debug y Configuración:**
+1. **Usar Jenkinsfile principal** con verificación de herramientas
+2. **Ejecutar pipeline** y revisar el stage "Verificar Herramientas Disponibles"
+3. **Configurar herramientas faltantes** basándose en los errores
+4. **Repetir** hasta que todas las herramientas estén disponibles
+
+### **Para Producción:**
+1. **Usar Jenkinsfile simplificado** que no depende de Jenkins Tools
+2. **Verificar** que las herramientas del sistema estén disponibles
+3. **Ejecutar pipeline** y confirmar que funcione correctamente
 
 ## 📞 **Soporte**
 
 Si continúas teniendo problemas:
-1. Verificar que todas las herramientas estén instaladas en el servidor Jenkins
-2. Verificar que los plugins necesarios estén instalados
-3. Revisar los logs de Jenkins para más detalles
-4. Usar el Jenkinsfile simplificado como alternativa temporal
+1. **Usar Jenkinsfile simplificado** como solución inmediata
+2. **Verificar** que todas las herramientas estén instaladas en el servidor Jenkins
+3. **Verificar** que los plugins necesarios estén instalados
+4. **Revisar** los logs de Jenkins para más detalles
+5. **Usar** el stage de verificación de herramientas para diagnosticar problemas

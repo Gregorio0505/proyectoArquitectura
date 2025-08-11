@@ -1,0 +1,114 @@
+pipeline {
+  agent any
+
+  options { timestamps() }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Verificar Herramientas del Sistema') {
+      steps {
+        script {
+          sh """
+            echo "=== Verificando herramientas del sistema ==="
+            echo "Java disponible:"
+            java -version || echo "Java no está disponible"
+            echo ""
+            echo "Maven disponible:"
+            mvn -version || echo "Maven no está disponible"
+            echo ""
+            echo "Node.js disponible:"
+            node --version || echo "Node.js no está disponible"
+            echo ""
+            echo "npm disponible:"
+            npm --version || echo "npm no está disponible"
+            echo "=== Fin verificación ==="
+          """
+        }
+      }
+    }
+
+    stage('Resolver branch y projectKeys de Sonar') {
+      steps {
+        script {
+          def b = env.BRANCH_NAME ?: 'dev'
+          if (!(b in ['dev','uat','master'])) { b = 'dev' } // feature/* -> dev
+
+          env.SONAR_KEY_BE = (b=='dev') ? 'pharmacy-backend-dev' :
+                             (b=='uat') ? 'pharmacy-backend-qa'  :
+                                         'pharmacy-backend-main'
+
+          env.SONAR_KEY_FE = (b=='dev') ? 'pharmacy-frontend-dev' :
+                             (b=='uat') ? 'pharmacy-frontend-qa'  :
+                                         'pharmacy-frontend-main'
+
+          env.BUILD_VER = "${env.BUILD_NUMBER}"
+          echo "BRANCH=${b} | BE=${env.SONAR_KEY_BE} | FE=${env.SONAR_KEY_FE} | VER=${env.BUILD_VER}"
+        }
+      }
+    }
+
+    stage('Backend - Build, Tests y Sonar') {
+      steps {
+        dir('pharmacy') {
+          withSonarQubeEnv('SonarQube') {
+            sh """
+              mvn -B clean verify sonar:sonar \
+                -Dsonar.projectKey=${env.SONAR_KEY_BE} \
+                -Dsonar.projectVersion=${env.BUILD_VER} \
+                -Dmaven.compiler.source=17 \
+                -Dmaven.compiler.target=17
+            """
+          }
+        }
+      }
+    }
+
+    stage('Quality Gate (Backend)') {
+      steps {
+        timeout(time: 10, unit: 'MINUTES') {
+          script {
+            def qg = waitForQualityGate() // requiere webhook Sonar->Jenkins
+            if (qg.status != 'OK') error "Quality Gate FAILED (Backend): ${qg.status}"
+          }
+        }
+      }
+    }
+
+    stage('Frontend - Build & Sonar (sin tests)') {
+      steps {
+        dir('frontend') {
+          sh """
+            npm ci
+            npm run build -- --configuration=production
+          """
+        }
+        withSonarQubeEnv('SonarQube') {
+          sh """
+            cd frontend
+            sonar-scanner \
+              -Dsonar.projectKey=${env.SONAR_KEY_FE} \
+              -Dsonar.projectVersion=${env.BUILD_VER}
+          """
+        }
+      }
+    }
+
+    stage('Quality Gate (Frontend)') {
+      steps {
+        timeout(time: 10, unit: 'MINUTES') {
+          script {
+            def qg = waitForQualityGate()
+            if (qg.status != 'OK') error "Quality Gate FAILED (Frontend): ${qg.status}"
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always { echo "Build URL: ${env.BUILD_URL}" }
+  }
+}
