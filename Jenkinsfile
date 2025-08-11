@@ -22,10 +22,10 @@ pipeline {
         script {
           sh """
             echo "=== Verificando versiones ==="
-            echo "JAVA_HOME: ${JAVA_HOME}"
-            echo "MAVEN_HOME: ${MAVEN_HOME}"
-            java -version
-            mvn -version
+            echo "JAVA_HOME: ${env.JAVA_HOME}"
+            echo "MAVEN_HOME: ${env.MAVEN_HOME}"
+            ${env.JAVA_HOME}/bin/java -version
+            ${env.MAVEN_HOME}/bin/mvn -version
             echo "=== Fin verificación ==="
           """
         }
@@ -57,11 +57,11 @@ pipeline {
         dir('pharmacy') {
           withSonarQubeEnv("${SONAR_SERVER}") {
             sh """
-              export JAVA_HOME="${JAVA_HOME}"
-              export PATH="${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}"
-              mvn -B clean verify sonar:sonar \
-                -Dsonar.projectKey=${SONAR_KEY_BE} \
-                -Dsonar.projectVersion=${BUILD_VER} \
+              export JAVA_HOME="${env.JAVA_HOME}"
+              export PATH="${env.JAVA_HOME}/bin:${env.MAVEN_HOME}/bin:${env.PATH}"
+              ${env.MAVEN_HOME}/bin/mvn -B clean verify sonar:sonar \
+                -Dsonar.projectKey=${env.SONAR_KEY_BE} \
+                -Dsonar.projectVersion=${env.BUILD_VER} \
                 -Dmaven.compiler.source=17 \
                 -Dmaven.compiler.target=17
             """
@@ -84,15 +84,19 @@ pipeline {
     stage('Frontend - Build & Sonar (sin tests)') {
       steps {
         dir('frontend') {
-          sh "npm ci"
-          sh "npm run build -- --configuration=production"
+          sh """
+            export PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
+            npm ci
+            npm run build -- --configuration=production
+          """
         }
         withSonarQubeEnv("${SONAR_SERVER}") {
           sh """
+            export PATH="${env.SCANNER_HOME}/bin:${env.PATH}"
             cd frontend
             sonar-scanner \
-              -Dsonar.projectKey=${SONAR_KEY_FE} \
-              -Dsonar.projectVersion=${BUILD_VER}
+              -Dsonar.projectKey=${env.SONAR_KEY_FE} \
+              -Dsonar.projectVersion=${env.BUILD_VER}
           """
         }
       }
