@@ -14,7 +14,11 @@ pipeline {
   options { timestamps() }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') { 
+      steps { 
+        checkout scm 
+      } 
+    }
 
     stage('Versions') {
       steps {
@@ -49,20 +53,20 @@ pipeline {
     }
 
     stage('Backend - Build, Tests y Sonar') {
-  steps {
-    dir('pharmacy') {
-      withSonarQubeEnv("${SONAR_SERVER}") {
-        sh """
-          mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
-            -Dsonar.projectKey=${SONAR_KEY_BE} \
-            -Dsonar.projectVersion=${BUILD_VER} \
-            -Dsonar.host.url=${SONAR_HOST_URL} \
-            -Dsonar.token=${SONAR_AUTH_TOKEN}
-        """
+      steps {
+        dir('pharmacy') {
+          withSonarQubeEnv("${SONAR_SERVER}") {
+            sh """
+              mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
+                -Dsonar.projectKey=${SONAR_KEY_BE} \
+                -Dsonar.projectVersion=${BUILD_VER} \
+                -Dsonar.host.url=${SONAR_HOST_URL} \
+                -Dsonar.token=${SONAR_AUTH_TOKEN}
+            """
+          }
+        }
       }
     }
-  }
-}
 
     stage('Quality Gate (Backend)') {
       steps {
@@ -76,26 +80,26 @@ pipeline {
     }
 
     stage('Frontend - Build & Sonar (sin tests)') {
-  steps {
-    dir('frontend') {
-      sh "npm ci"
-      sh "npm run build -- --configuration=production"
-    }
-    script {
-      def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-      withSonarQubeEnv("${SONAR_SERVER}") {
-        sh """
-          cd frontend
-          "${scannerHome}/bin/sonar-scanner" \
-            -Dsonar.projectKey=${SONAR_KEY_FE} \
-            -Dsonar.projectVersion=${BUILD_VER} \
-            -Dsonar.host.url=${SONAR_HOST_URL} \
-            -Dsonar.token=${SONAR_AUTH_TOKEN}
-        """
+      steps {
+        dir('frontend') {
+          sh "npm ci"
+          sh "npm run build -- --configuration=production"
+        }
+        script {
+          def scannerHome = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+          withSonarQubeEnv("${SONAR_SERVER}") {
+            sh """
+              cd frontend
+              "${scannerHome}/bin/sonar-scanner" \
+                -Dsonar.projectKey=${SONAR_KEY_FE} \
+                -Dsonar.projectVersion=${BUILD_VER} \
+                -Dsonar.host.url=${SONAR_HOST_URL} \
+                -Dsonar.token=${SONAR_AUTH_TOKEN}
+            """
+          }
+        }
       }
     }
-  }
-}
 
     stage('Quality Gate (Frontend)') {
       steps {
@@ -109,39 +113,35 @@ pipeline {
     }
   }
 
-  post { always { echo "Build URL: ${env.BUILD_URL}" } }
-
-
   post {
-  failure {
-    emailext(
-      subject: "[CI][FALLO] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
-      to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
-      body: """\
+    failure {
+      emailext(
+        subject: "[CI][FALLO] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+        to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
+        body: """\
 Hola,
 
 El pipeline ha fallado en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
 Revisar consola: ${env.BUILD_URL}
 
 """
-    )
-  }
-  unstable {
-    emailext(
-      subject: "[CI][INESTABLE] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
-      to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
-      body: """\
+      )
+    }
+    unstable {
+      emailext(
+        subject: "[CI][INESTABLE] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+        to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
+        body: """\
 Hola,
 
 El pipeline ha quedado inestable en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
 Revisar consola: ${env.BUILD_URL}
 
 """
-    )
+      )
+    }
+    always {
+      echo "Build URL: ${env.BUILD_URL}"
+    }
   }
-  always {
-    echo "Build URL: ${env.BUILD_URL}"
-  }
-}
-
 }
