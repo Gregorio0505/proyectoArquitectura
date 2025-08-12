@@ -4,7 +4,7 @@ pipeline {
   tools {
     jdk    'JDK17'      // Temurin 17 en Global Tool Configuration
     maven  'Maven3.9'   // Maven 3.9.x
-    nodejs 'Node18'     // Node 18.x LTS
+    nodejs 'Node20'     // Node 18.x LTS
   }
 
   environment {
