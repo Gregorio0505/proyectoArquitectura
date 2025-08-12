@@ -49,19 +49,24 @@ pipeline {
     }
 
     stage('Backend - Build, Tests y Sonar') {
-      steps {
-        dir('pharmacy') {
-          withSonarQubeEnv("${SONAR_SERVER}") {
-            sh """
-              mvn -e -B clean verify sonar:sonar \
-                -Dsonar.projectKey=${SONAR_KEY_BE} \
-                -Dsonar.projectVersion=${BUILD_VER}
-            """
-
-          }
-        }
+  steps {
+    dir('pharmacy') {
+      // 1) Compilar y mostrar error completo
+      sh '''
+        set -euxo pipefail
+        mvn -e -B -DskipTests clean compile
+      '''
+      // 2) Si compiló, ya corremos verify + sonar
+      withSonarQubeEnv("${SONAR_SERVER}") {
+        sh """
+          mvn -e -B verify sonar:sonar \
+            -Dsonar.projectKey=${SONAR_KEY_BE} \
+            -Dsonar.projectVersion=${BUILD_VER}
+        """
       }
     }
+  }
+}
 
     stage('Quality Gate (Backend)') {
       steps {
