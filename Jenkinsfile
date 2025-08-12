@@ -110,4 +110,38 @@ pipeline {
   }
 
   post { always { echo "Build URL: ${env.BUILD_URL}" } }
+
+
+  post {
+  failure {
+    emailext(
+      subject: "[CI][FALLO] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+      to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
+      body: """\
+Hola,
+
+El pipeline ha fallado en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
+Revisar consola: ${env.BUILD_URL}
+
+"""
+    )
+  }
+  unstable {
+    emailext(
+      subject: "[CI][INESTABLE] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+      to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",  // Cambia esto por los correos reales
+      body: """\
+Hola,
+
+El pipeline ha quedado inestable en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
+Revisar consola: ${env.BUILD_URL}
+
+"""
+    )
+  }
+  always {
+    echo "Build URL: ${env.BUILD_URL}"
+  }
+}
+
 }
