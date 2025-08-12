@@ -53,10 +53,11 @@ pipeline {
         dir('pharmacy') {
           withSonarQubeEnv("${SONAR_SERVER}") {
             sh """
-              mvn clean verify sonar:sonar \
+              mvn -e -B clean verify sonar:sonar \
                 -Dsonar.projectKey=${SONAR_KEY_BE} \
                 -Dsonar.projectVersion=${BUILD_VER}
             """
+
           }
         }
       }
