@@ -48,17 +48,19 @@ pipeline {
       }
     }
 
-    stage('Backend - solo compile para ver el error real') {
-  steps {
-    dir('pharmacy') {
-      sh '''
-        #!/usr/bin/env bash
-        set -e  # (si quieres, también -x para traza)
-        mvn -e -X -DskipTests clean compile
-      '''
+    stage('Backend - Build, Tests y Sonar') {
+      steps {
+        dir('pharmacy') {
+          withSonarQubeEnv("${SONAR_SERVER}") {
+            sh """
+              mvn clean verify sonar:sonar \
+                -Dsonar.projectKey=${SONAR_KEY_BE} \
+                -Dsonar.projectVersion=${BUILD_VER}
+            """
+          }
+        }
+      }
     }
-  }
-}
 
     stage('Quality Gate (Backend)') {
       steps {
