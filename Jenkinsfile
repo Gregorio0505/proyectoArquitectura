@@ -48,22 +48,14 @@ pipeline {
       }
     }
 
-    stage('Backend - Build, Tests y Sonar') {
+    stage('Backend - solo compile para ver el error real') {
   steps {
     dir('pharmacy') {
-      // 1) Compilar y mostrar error completo
       sh '''
-        set -euxo pipefail
-        mvn -e -B -DskipTests clean compile
+        #!/usr/bin/env bash
+        set -e  # (si quieres, también -x para traza)
+        mvn -e -X -DskipTests clean compile
       '''
-      // 2) Si compiló, ya corremos verify + sonar
-      withSonarQubeEnv("${SONAR_SERVER}") {
-        sh """
-          mvn -e -B verify sonar:sonar \
-            -Dsonar.projectKey=${SONAR_KEY_BE} \
-            -Dsonar.projectVersion=${BUILD_VER}
-        """
-      }
     }
   }
 }
