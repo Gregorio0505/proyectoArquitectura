@@ -14,9 +14,19 @@ if [[ ! -f "$FILE" ]]; then
 fi
 
 echo "=== Deploy ${ENV_NAME} con ${FILE} ==="
+echo "Deteniendo contenedores y removiendo orfanos..."
 docker compose -f "$FILE" down --remove-orphans || true
-# Si usas registry (imágenes en un repo remoto), descomenta esta línea:
-# docker compose -f "$FILE" pull || true
-docker compose -f "$FILE" up -d --build
+
+echo "Limpiando imágenes y cache..."
+docker system prune -f || true
+docker image prune -f || true
+
+echo "Reconstruyendo imágenes sin cache..."
+docker compose -f "$FILE" build --no-cache
+
+echo "Levantando servicios..."
+docker compose -f "$FILE" up -d
+
+echo "Limpiando imágenes no utilizadas..."
 docker image prune -f || true
 echo "=== Deploy ${ENV_NAME} OK ==="
