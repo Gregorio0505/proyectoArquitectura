@@ -1,4 +1,16 @@
-// --- Utilidad: normalizar nombre de rama ---
+// =======================
+// Jenkinsfile - Multibranch
+// PR: solo validaciones (build/tests/Sonar + Quality Gate)
+// Post-merge (rama): build/pack + deploy por ambiente
+// =======================
+
+// --- Utilidad: rama efectiva (si es PR usa la rama destino) ---
+def effectiveBranch() {
+  // En PRs, Jenkins expone CHANGE_TARGET (rama a la que mergeas)
+  return ((env.CHANGE_TARGET ?: env.BRANCH_NAME) ?: 'dev').toLowerCase()
+}
+
+// --- Utilidad: nombre normalizado de la rama de CI (BRANCH_NAME sin CHANGE_TARGET) ---
 def normalizedBranch() {
   return (env.BRANCH_NAME ?: 'dev').toLowerCase()
 }
@@ -11,7 +23,7 @@ def envFromBranch(String branch) {
     case 'uat':    return 'qa'     // qa y uat despliegan con docker-compose.qa.yml
     case 'main':
     case 'master': return 'prod'   // main/master → producción
-    default:       return 'dev'    // feature/*, etc. → dev (ajusta si quieres fallar)
+    default:       return null     // feature/*, PR-# → sin deploy
   }
 }
 
@@ -28,13 +40,11 @@ pipeline {
     SONAR_SERVER = 'SonarQube' // nombre del server en Manage Jenkins → System
   }
 
-  options { timestamps() }
+  options { timestamps(); disableConcurrentBuilds() }
 
   stages {
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Versions') {
@@ -52,8 +62,9 @@ pipeline {
     stage('Resolver branch y projectKeys de Sonar') {
       steps {
         script {
-          def b = normalizedBranch()
-          if (!(b in ['dev','qa','uat','master','main'])) { b = 'dev' } // feature/* -> dev
+          // Para PRs usamos la rama destino (CHANGE_TARGET) para etiquetar Sonar correctamente
+          def b = effectiveBranch()
+          if (!(b in ['dev','qa','uat','master','main'])) { b = 'dev' } // fallback
 
           env.SONAR_KEY_BE = (b=='dev') ? 'pharmacy-backend-dev' :
                              (b in ['qa','uat']) ? 'pharmacy-backend-qa'  :
@@ -64,13 +75,15 @@ pipeline {
                                                    'pharmacy-frontend-main'
 
           env.BUILD_VER = "${env.BUILD_NUMBER}"
-          echo "JENKINS BRANCH_NAME='${env.BRANCH_NAME}' (normalized='${b}')"
+          echo "BRANCH_NAME='${env.BRANCH_NAME}' | CHANGE_TARGET='${env.CHANGE_TARGET}' | efectiva='${b}'"
           echo "BE_KEY=${env.SONAR_KEY_BE} | FE_KEY=${env.SONAR_KEY_FE} | VER=${env.BUILD_VER}"
         }
       }
     }
 
-    stage('Backend - Build, Tests y Sonar') {
+    // ===================== CI para PULL REQUESTS =====================
+    stage('PR - Backend: Build, Tests y Sonar') {
+      when { changeRequest() }  // Solo en PRs
       steps {
         dir('pharmacy') {
           withSonarQubeEnv("${SONAR_SERVER}") {
@@ -86,7 +99,8 @@ pipeline {
       }
     }
 
-    stage('Quality Gate (Backend)') {
+    stage('PR - Quality Gate (Backend)') {
+      when { changeRequest() }
       steps {
         timeout(time: 10, unit: 'MINUTES') {
           script {
@@ -97,7 +111,8 @@ pipeline {
       }
     }
 
-    stage('Frontend - Build & Sonar (sin tests)') {
+    stage('PR - Frontend: Build & Sonar') {
+      when { changeRequest() }
       steps {
         dir('frontend') {
           sh "npm ci"
@@ -119,7 +134,8 @@ pipeline {
       }
     }
 
-    stage('Quality Gate (Frontend)') {
+    stage('PR - Quality Gate (Frontend)') {
+      when { changeRequest() }
       steps {
         timeout(time: 10, unit: 'MINUTES') {
           script {
@@ -129,33 +145,45 @@ pipeline {
         }
       }
     }
+    // =================== FIN CI PARA PRs (sin deploy) ===================
 
-    // (Opcional) Smoke de SSH previo al deploy
-    // stage('Test SSH to host') {
-    //   steps {
-    //     sshagent(credentials: ['ssh-deploy-host']) {
-    //       sh "ssh -o StrictHostKeyChecking=no gregorio05@host.docker.internal 'echo OK && whoami && docker ps | head'"
-    //     }
-    //   }
-    // }
 
-    stage('Deploy') {
-      // Ejecuta deploy solo en estas ramas
+    // ================ POST-MERGE (RAMAS): BUILD & DEPLOY ================
+    stage('Build artefactos (post-merge)') {
+      when { not { changeRequest() } }  // Nunca en PRs
+      steps {
+        dir('pharmacy') {
+          // puedes incluir tests aquí si quieres revalidar en rama
+          sh 'mvn -B -DskipTests clean package'
+        }
+        dir('frontend') {
+          sh 'npm ci'
+          sh 'npm run build -- --configuration=production'
+        }
+      }
+    }
+
+    stage('Deploy por rama') {
       when {
-        expression { ['dev','qa','uat','main','master'].contains(normalizedBranch()) }
+        allOf {
+          not { changeRequest() }           // Solo post-merge
+          expression {
+            // Solo si la rama mapea a un ambiente válido
+            return envFromBranch(effectiveBranch()) != null
+          }
+        }
       }
       steps {
         script {
-          def branch     = normalizedBranch()
-          def envName    = envFromBranch(branch)
-          def DEPLOY_HOST = 'gregorio05@host.docker.internal'        // o IP del host
+          def branch      = effectiveBranch()
+          def envName     = envFromBranch(branch)
+          def DEPLOY_HOST = 'gregorio05@host.docker.internal'   // o IP del host
           def APP_DIR     = '/home/gregorio05/Documentos/proyectoArquitectura'
 
           sshagent(credentials: ['ssh-deploy-host']) {
             if (envName == 'prod') {
               input message: "¿Desplegar a PRODUCCIÓN ahora?", ok: "Desplegar"
             }
-
             sh """
               ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} '
                 set -euo pipefail
@@ -171,45 +199,43 @@ pipeline {
         }
       }
     }
+    // ============== FIN POST-MERGE (RAMAS): BUILD & DEPLOY ==============
   }
 
   post {
     success {
       emailext(
-        subject: "[CI][DEPLOY OK] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+        subject: "[CI/CD][OK] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
         to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",
         body: """\
 Hola,
 
-El pipeline y el despliegue terminaron **OK** en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (rama ${env.BRANCH_NAME}).
-Revisar consola: ${env.BUILD_URL}
-
+El pipeline terminó **OK** en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (rama ${env.BRANCH_NAME}).
+Consola: ${env.BUILD_URL}
 """
       )
     }
     failure {
       emailext(
-        subject: "[CI][FALLO] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+        subject: "[CI/CD][FALLO] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
         to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",
         body: """\
 Hola,
 
-El pipeline ha fallado en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
-Revisar consola: ${env.BUILD_URL}
-
+El pipeline ha fallado en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (rama ${env.BRANCH_NAME}).
+Consola: ${env.BUILD_URL}
 """
       )
     }
     unstable {
       emailext(
-        subject: "[CI][INESTABLE] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
+        subject: "[CI/CD][INESTABLE] ${env.JOB_NAME} #${env.BUILD_NUMBER} (${env.BRANCH_NAME})",
         to: "josegregoriocoronelcolombo@gmail.com, jflores@unis.edu.gt",
         body: """\
 Hola,
 
-El pipeline ha quedado inestable en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (${env.BRANCH_NAME}).
-Revisar consola: ${env.BUILD_URL}
-
+El pipeline ha quedado inestable en *${env.JOB_NAME}* #${env.BUILD_NUMBER} (rama ${env.BRANCH_NAME}).
+Consola: ${env.BUILD_URL}
 """
       )
     }
