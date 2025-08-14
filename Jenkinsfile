@@ -1,5 +1,10 @@
 pipeline {
-  agent any
+  agent {
+    docker {
+      image 'docker:latest'
+      args '-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker'
+    }
+  }
 
   tools {
     jdk    'JDK17'      // Temurin 17 en Global Tool Configuration
