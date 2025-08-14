@@ -1,10 +1,5 @@
 pipeline {
-  agent {
-    docker {
-      image 'docker:latest'
-      args '-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker'
-    }
-  }
+  agent any
 
   tools {
     jdk    'JDK17'      // Temurin 17 en Global Tool Configuration
@@ -113,33 +108,6 @@ pipeline {
             def qg = waitForQualityGate()
             if (qg.status != 'OK') error "Quality Gate FAILED (Frontend): ${qg.status}"
           }
-        }
-      }
-    }
-
-    stage('Deploy - Docker Compose') {
-      steps {
-        script {
-          def b = env.BRANCH_NAME ?: 'dev'
-          if (!(b in ['dev','qa','prod'])) { b = 'dev' } // feature/* -> dev
-
-          echo "🚀 Iniciando deploy para rama: ${b}"
-          
-          // Limpiar contenedores anteriores del ambiente
-          sh """
-            echo "🧹 Limpiando contenedores anteriores del ambiente ${b}..."
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \$(pwd):\$(pwd) -w \$(pwd) docker/compose:latest docker-compose -f docker-compose.${b}.yml down --remove-orphans || true
-          """
-          
-          // Hacer deploy del ambiente correspondiente
-          sh """
-            echo "🚀 Levantando ambiente ${b}..."
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v \$(pwd):\$(pwd) -w \$(pwd) docker/compose:latest docker-compose -f docker-compose.${b}.yml up -d --build
-            
-            echo "✅ Deploy completado para ambiente ${b}"
-            echo "📊 Contenedores corriendo:"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock docker:latest docker ps | grep proyectoarquitectura || echo "No hay contenedores del proyecto corriendo"
-          """
         }
       }
     }
