@@ -14,7 +14,7 @@ if [[ ! -f "$FILE" ]]; then
 fi
 
 echo "=== Deploy ${ENV_NAME} con ${FILE} ==="
-#docker compose -f "$FILE" down --remove-orphans || true
+docker compose -f "$FILE" down --remove-orphans || true
 # Si usas registry (imágenes en un repo remoto), descomenta esta línea:
 # docker compose -f "$FILE" pull || true
 docker compose -f "$FILE" up -d --build
