@@ -1,11 +1,17 @@
+// --- Utilidad: normalizar nombre de rama ---
+def normalizedBranch() {
+  return (env.BRANCH_NAME ?: 'dev').toLowerCase()
+}
+
 // --- Utilidad: mapear rama -> ambiente de despliegue ---
 def envFromBranch(String branch) {
-  switch (branch) {
+  switch (branch.toLowerCase()) {
     case 'dev':    return 'dev'
-    case 'uat':    return 'qa'     // tu rama uat despliega con docker-compose.qa.yml
+    case 'qa':
+    case 'uat':    return 'qa'     // qa y uat despliegan con docker-compose.qa.yml
     case 'main':
-    case 'master': return 'prod'   // master → producción
-    default:       return 'dev'    // feature/*, etc. → dev (puedes cambiar si quieres fallar)
+    case 'master': return 'prod'   // main/master → producción
+    default:       return 'dev'    // feature/*, etc. → dev (ajusta si quieres fallar)
   }
 }
 
@@ -15,7 +21,7 @@ pipeline {
   tools {
     jdk    'JDK17'      // Temurin 17 en Global Tool Configuration
     maven  'Maven3.9'   // Maven 3.9.x
-    nodejs 'Node20'     // Node 20.x (tu comentario decía 18, pero tienes 'Node20')
+    nodejs 'Node20'     // Node 20.x
   }
 
   environment {
@@ -46,19 +52,20 @@ pipeline {
     stage('Resolver branch y projectKeys de Sonar') {
       steps {
         script {
-          def b = env.BRANCH_NAME ?: 'dev'
-          if (!(b in ['dev','uat','master'])) { b = 'dev' } // feature/* -> dev
+          def b = normalizedBranch()
+          if (!(b in ['dev','qa','uat','master','main'])) { b = 'dev' } // feature/* -> dev
 
           env.SONAR_KEY_BE = (b=='dev') ? 'pharmacy-backend-dev' :
-                             (b=='uat') ? 'pharmacy-backend-qa'  :
-                                          'pharmacy-backend-main'
+                             (b in ['qa','uat']) ? 'pharmacy-backend-qa'  :
+                                                   'pharmacy-backend-main'
 
           env.SONAR_KEY_FE = (b=='dev') ? 'pharmacy-frontend-dev' :
-                             (b=='uat') ? 'pharmacy-frontend-qa'  :
-                                          'pharmacy-frontend-main'
+                             (b in ['qa','uat']) ? 'pharmacy-frontend-qa'  :
+                                                   'pharmacy-frontend-main'
 
           env.BUILD_VER = "${env.BUILD_NUMBER}"
-          echo "BRANCH=${b} | BE=${env.SONAR_KEY_BE} | FE=${env.SONAR_KEY_FE} | VER=${env.BUILD_VER}"
+          echo "JENKINS BRANCH_NAME='${env.BRANCH_NAME}' (normalized='${b}')"
+          echo "BE_KEY=${env.SONAR_KEY_BE} | FE_KEY=${env.SONAR_KEY_FE} | VER=${env.BUILD_VER}"
         }
       }
     }
@@ -123,7 +130,7 @@ pipeline {
       }
     }
 
-    // (Opcional) Smoke de SSH antes del deploy; puedes comentarlo tras validar una vez.
+    // (Opcional) Smoke de SSH previo al deploy
     // stage('Test SSH to host') {
     //   steps {
     //     sshagent(credentials: ['ssh-deploy-host']) {
@@ -133,16 +140,15 @@ pipeline {
     // }
 
     stage('Deploy') {
+      // Ejecuta deploy solo en estas ramas
       when {
-        anyOf {
-          branch 'dev'; branch 'uat'; branch 'main'; branch 'master'
-        }
+        expression { ['dev','qa','uat','main','master'].contains(normalizedBranch()) }
       }
       steps {
         script {
-          // Si llegamos aquí es porque todo lo anterior pasó en verde.
-          def envName   = envFromBranch(env.BRANCH_NAME)
-          def DEPLOY_HOST = 'gregorio05@host.docker.internal'        // << cambia si prefieres IP fija
+          def branch     = normalizedBranch()
+          def envName    = envFromBranch(branch)
+          def DEPLOY_HOST = 'gregorio05@host.docker.internal'        // o IP del host
           def APP_DIR     = '/home/gregorio05/Documentos/proyectoArquitectura'
 
           sshagent(credentials: ['ssh-deploy-host']) {
@@ -155,8 +161,8 @@ pipeline {
                 set -euo pipefail
                 cd ${APP_DIR}
                 git fetch --all
-                git checkout ${env.BRANCH_NAME}
-                git pull origin ${env.BRANCH_NAME}
+                git checkout ${branch}
+                git pull origin ${branch}
                 chmod +x scripts/deploy.sh
                 ./scripts/deploy.sh ${envName}
               '
