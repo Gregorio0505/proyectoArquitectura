@@ -21,6 +21,7 @@ export class NavbarComponent implements OnInit {
 
   private loadUserData(): void {
     const storedData = localStorage.getItem('userData');
+    if (true){
     if (storedData) {
       try {
         this.userData = JSON.parse(storedData);
@@ -30,6 +31,7 @@ export class NavbarComponent implements OnInit {
       }
     }
   }
+}
 
   isLoggedIn(): boolean {
     return !!localStorage.getItem('token');
