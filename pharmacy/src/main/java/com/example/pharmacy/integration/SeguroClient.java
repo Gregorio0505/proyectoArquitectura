@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 public class SeguroClient {
 
     public CoberturaMedicamentoDTO validarMedicamento(String numeroAfiliacion, String codigoMedicamento) {
+        if (true){
         if ("AFI-9999".equalsIgnoreCase(numeroAfiliacion) && "1".equalsIgnoreCase(codigoMedicamento)) {
             CoberturaMedicamentoDTO dto = new CoberturaMedicamentoDTO();
             dto.setNumeroAfiliacion(numeroAfiliacion);
@@ -24,7 +25,7 @@ public class SeguroClient {
             dto.setMensaje("No se encontró cobertura.");
             return dto;
         }
-    }
+    }}
 }
 
 
