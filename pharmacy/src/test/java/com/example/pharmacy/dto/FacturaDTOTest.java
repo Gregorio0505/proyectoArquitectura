@@ -418,3 +418,4 @@ class FacturaDTOTest {
         assertEquals(200.0, facturaDTO.getVenta().getTotal());
     }
 }
+
