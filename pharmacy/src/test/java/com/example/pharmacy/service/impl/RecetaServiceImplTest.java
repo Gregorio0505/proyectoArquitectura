@@ -1,136 +1,140 @@
 package com.example.pharmacy.service.impl;
 
-import com.example.pharmacy.model.Rol;
-import com.example.pharmacy.model.Usuario;
-import com.example.pharmacy.repository.RolRepository;
-import com.example.pharmacy.repository.UsuarioRepository;
-import com.example.pharmacy.repository.UsuarioRolRepository;
-import com.example.pharmacy.dto.UserDTO;
-import com.example.pharmacy.service.EmailService;
-import com.example.pharmacy.service.VerificationTokenService;
+import com.example.pharmacy.model.Receta;
+import com.example.pharmacy.model.RecetaDetalle;
+import com.example.pharmacy.dto.RecetaDTO;
+import com.example.pharmacy.dto.RecetaDetalleDTO;
+import com.example.pharmacy.repository.RecetaRepository;
+import com.example.pharmacy.repository.RecetaDetalleRepository;
+import com.example.pharmacy.service.AuditoriaService;
+import com.example.pharmacy.util.UserDetails;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UsuarioServiceImplTest {
+class RecetaServiceImplTest {
 
     @Mock
-    private UsuarioRepository usuarioRepository;
+    private RecetaRepository recetaRepository;
 
     @Mock
-    private UsuarioRolRepository usuarioRolRepository;
+    private RecetaDetalleRepository detalleRepository;
 
     @Mock
-    private RolRepository rolRepository;
+    private AuditoriaService auditoriaService;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private EmailService emailService;
-
-    @Mock
-    private VerificationTokenService verificationTokenService;
+    private UserDetails userDetails;
 
     @InjectMocks
-    private UsuarioServiceImpl service;
+    private RecetaServiceImpl service;
 
-    private Usuario existingUser;
+    private Receta testReceta;
+    private RecetaDTO testRecetaDTO;
+    private RecetaDetalle testDetalle;
+    private RecetaDetalleDTO testDetalleDTO;
 
     @BeforeEach
     void setUp() {
-        existingUser = new Usuario();
-        existingUser.setIdUsuario(1L);
-        existingUser.setNombre("Old Name");
-        existingUser.setCorreo("old@test.com");
-        existingUser.setPasswordHash("oldhash");
-        existingUser.setFechaCreacion(LocalDateTime.now());
+        testReceta = new Receta();
+        testReceta.setIdReceta(1L);
+        testReceta.setCodigoReceta("REC001");
+        testReceta.setFecha(LocalDateTime.now());
+        testReceta.setIdUsuario(1L);
+        testReceta.setAprobadoSeguro("N");
+        testReceta.setPdfUrl("test.pdf");
+
+        testDetalle = new RecetaDetalle();
+        testDetalle.setIdDetalle(1L);
+        testDetalle.setIdReceta(1L);
+        testDetalle.setIdMedicamento(1L);
+        testDetalle.setDosis("1 comprimido");
+        testDetalle.setFrecuencia("cada 8 horas");
+        testDetalle.setDuracion("7 días");
+        testDetalle.setCantidadRequerida(21);
+        testDetalle.setObservaciones("Tomar con comida");
+
+        testDetalleDTO = new RecetaDetalleDTO();
+        testDetalleDTO.setIdDetalle(1L);
+        testDetalleDTO.setIdMedicamento(1L);
+        testDetalleDTO.setDosis("1 comprimido");
+        testDetalleDTO.setFrecuencia("cada 8 horas");
+        testDetalleDTO.setDuracion("7 días");
+        testDetalleDTO.setCantidadRequerida(21);
+        testDetalleDTO.setObservaciones("Tomar con comida");
+
+        testRecetaDTO = new RecetaDTO();
+        testRecetaDTO.setIdReceta(1L);
+        testRecetaDTO.setCodigoReceta("REC001");
+        testRecetaDTO.setIdUsuario(1L);
+        testRecetaDTO.setPdfUrl("test.pdf");
+        testRecetaDTO.setDetalles(Arrays.asList(testDetalleDTO));
     }
 
     @Test
-    @DisplayName("updateMyProfile: actualiza nombre y correo sin cambiar contraseña")
-    void updateMyProfile_withoutPassword() {
-        UserDTO dto = new UserDTO();
-        dto.setNombre("New Name");
-        dto.setCorreo("new@test.com");
-        dto.setPassword(null);
+    void testCreateReceta_Success() {
+        // Arrange
+        when(recetaRepository.save(any(Receta.class))).thenReturn(testReceta);
+        when(detalleRepository.save(any(RecetaDetalle.class))).thenReturn(testDetalle);
+        when(userDetails.getUsuarioActual()).thenReturn("testuser");
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testDetalle));
 
-        when(usuarioRepository.findByCorreo("old@test.com")).thenReturn(Optional.of(existingUser));
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Act
+        RecetaDTO result = service.createReceta(testRecetaDTO);
 
-        Usuario result = service.updateMyProfile("old@test.com", dto);
-
-        assertEquals("New Name", result.getNombre());
-        assertEquals("new@test.com", result.getCorreo());
-        assertEquals("oldhash", result.getPasswordHash());
-        verify(passwordEncoder, never()).encode(any());
-        verify(usuarioRepository).save(result);
+        // Assert
+        assertNotNull(result);
+        assertEquals("REC001", result.getCodigoReceta());
+        assertEquals(1L, result.getIdUsuario());
+        verify(recetaRepository).save(any(Receta.class));
+        verify(detalleRepository, times(1)).save(any(RecetaDetalle.class));
     }
 
     @Test
-    @DisplayName("updateMyProfile: actualiza contraseña cuando se provee")
-    void updateMyProfile_withPassword() {
-        UserDTO dto = new UserDTO();
-        dto.setNombre("Name");
-        dto.setCorreo("old@test.com");
-        dto.setPassword("newpwd");
+    void testGetRecetaWithDetails_Success() {
+        // Arrange
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testDetalle));
 
-        when(usuarioRepository.findByCorreo("old@test.com")).thenReturn(Optional.of(existingUser));
-        when(passwordEncoder.encode("newpwd")).thenReturn("newhash");
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Act
+        RecetaDTO result = service.getRecetaWithDetails(1L);
 
-        Usuario result = service.updateMyProfile("old@test.com", dto);
-
-        assertEquals("newhash", result.getPasswordHash());
-        verify(passwordEncoder).encode("newpwd");
-        verify(usuarioRepository).save(result);
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getIdReceta());
+        assertEquals("REC001", result.getCodigoReceta());
+        assertEquals(1, result.getDetalles().size());
+        verify(recetaRepository).findById(1L);
+        verify(detalleRepository).findByIdReceta(1L);
     }
 
     @Test
-    @DisplayName("assignRolesToUser: asigna rol correctamente cuando no existe")
-    void assignRolesToUser_success() {
-        Long userId = 1L;
-        Long roleId = 2L;
-        when(usuarioRepository.existsById(userId)).thenReturn(true);
-        when(rolRepository.existsById(roleId)).thenReturn(true);
-        when(usuarioRolRepository.findByIdUsuarioAndIdRol(userId, roleId)).thenReturn(List.of());
-        doNothing().when(usuarioRolRepository).insertUsuarioRol(userId, roleId);
+    void testGetRecetaWithDetails_NotFound() {
+        // Arrange
+        when(recetaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertDoesNotThrow(() -> service.assignRolesToUser(userId, List.of(roleId)));
+        // Act & Assert
+        NoSuchElementException exception = assertThrows(NoSuchElementException.class, () -> {
+            service.getRecetaWithDetails(1L);
+        });
 
-        verify(usuarioRolRepository).insertUsuarioRol(userId, roleId);
+        assertEquals("Receta no encontrada: 1", exception.getMessage());
     }
 
-    @Test
-    @DisplayName("assignRolesToUser: error cuando usuario no existe")
-    void assignRolesToUser_userNotFound() {
-        when(usuarioRepository.existsById(5L)).thenReturn(false);
-        assertThrows(Exception.class, () -> service.assignRolesToUser(5L, List.of(1L)));
-    }
 
-    @Test
-    @DisplayName("removeRolFromUser: elimina correctamente")
-    void removeRolFromUser_success() {
-        Long userId = 1L, roleId = 3L;
-        when(usuarioRepository.existsById(userId)).thenReturn(true);
-        when(rolRepository.existsById(roleId)).thenReturn(true);
-        doNothing().when(usuarioRolRepository).deleteUsuarioRol(userId, roleId);
-
-        assertDoesNotThrow(() -> service.removeRolFromUser(userId, roleId));
-        verify(usuarioRolRepository).deleteUsuarioRol(userId, roleId);
-    }
 }
