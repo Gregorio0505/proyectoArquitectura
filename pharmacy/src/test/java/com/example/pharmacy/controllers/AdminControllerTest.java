@@ -107,6 +107,8 @@ class AdminControllerTest {
         verify(usuarioService).findUsersByFilters(email, fromDate, toDate, role);
     }
 
+
+
     @Test
     void testFilterUsers_WithNullParameters() {
         // Arrange
@@ -274,5 +276,169 @@ class AdminControllerTest {
         assertNotNull(response.getBody());
         assertEquals("Service error", response.getBody().get("error"));
         verify(usuarioService).deactivateUser(1L);
+    }
+
+    @Test
+    void testAssignRoles_Success() {
+        // Arrange
+        Map<String, List<Long>> rolesData = new HashMap<>();
+        rolesData.put("roleIds", Arrays.asList(1L, 2L));
+
+        doNothing().when(usuarioService).assignRolesToUser(1L, Arrays.asList(1L, 2L));
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.assignRoles(1L, rolesData);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Roles assigned successfully", response.getBody().get("message"));
+        verify(usuarioService).assignRolesToUser(1L, Arrays.asList(1L, 2L));
+    }
+
+    @Test
+    void testAssignRoles_MissingRoleIds() {
+        // Arrange
+        Map<String, List<Long>> rolesData = new HashMap<>();
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.assignRoles(1L, rolesData);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Role IDs are required", response.getBody().get("error"));
+    }
+
+    @Test
+    void testAssignRoles_EmptyRoleIds() {
+        // Arrange
+        Map<String, List<Long>> rolesData = new HashMap<>();
+        rolesData.put("roleIds", Arrays.asList());
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.assignRoles(1L, rolesData);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Role IDs are required", response.getBody().get("error"));
+    }
+
+    @Test
+    void testAssignRoles_Exception() {
+        // Arrange
+        Map<String, List<Long>> rolesData = new HashMap<>();
+        rolesData.put("roleIds", Arrays.asList(1L, 2L));
+
+        doThrow(new RuntimeException("Service error")).when(usuarioService).assignRolesToUser(1L, Arrays.asList(1L, 2L));
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.assignRoles(1L, rolesData);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Service error", response.getBody().get("error"));
+        verify(usuarioService).assignRolesToUser(1L, Arrays.asList(1L, 2L));
+    }
+
+    @Test
+    void testRemoveRole_Success() {
+        // Arrange
+        doNothing().when(usuarioService).removeRolFromUser(1L, 2L);
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.removeRole(1L, 2L);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Role removed successfully", response.getBody().get("message"));
+        verify(usuarioService).removeRolFromUser(1L, 2L);
+    }
+
+    @Test
+    void testRemoveRole_Exception() {
+        // Arrange
+        doThrow(new RuntimeException("Service error")).when(usuarioService).removeRolFromUser(1L, 2L);
+
+        // Act
+        ResponseEntity<Map<String, Object>> response = adminController.removeRole(1L, 2L);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Service error", response.getBody().get("error"));
+        verify(usuarioService).removeRolFromUser(1L, 2L);
+    }
+
+    @Test
+    void testGetAllRoles_Success() {
+        // Arrange
+        List<Rol> roles = Arrays.asList(testRol);
+        when(rolRepository.findAll()).thenReturn(roles);
+
+        // Act
+        ResponseEntity<List<Rol>> response = adminController.getAllRoles();
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(roles, response.getBody());
+        verify(rolRepository).findAll();
+    }
+
+    @Test
+    void testGetAllRoles_EmptyList() {
+        // Arrange
+        when(rolRepository.findAll()).thenReturn(Arrays.asList());
+
+        // Act
+        ResponseEntity<List<Rol>> response = adminController.getAllRoles();
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isEmpty());
+        verify(rolRepository).findAll();
+    }
+
+    @Test
+    void testGetUserById_ZeroId() {
+        // Arrange
+        when(usuarioService.findByCorreo("0")).thenReturn(null);
+
+        // Act
+        ResponseEntity<UserDTO> response = adminController.getUserById(0L);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        verify(usuarioService).findByCorreo("0");
+    }
+
+    @Test
+    void testGetUserById_NegativeId() {
+        // Arrange
+        when(usuarioService.findByCorreo("-1")).thenReturn(null);
+
+        // Act
+        ResponseEntity<UserDTO> response = adminController.getUserById(-1L);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        verify(usuarioService).findByCorreo("-1");
+    }
+
+    @Test
+    void testFilterUsers_WithEmptyParameters() {
+        // Arrange
+        when(usuarioService.findUsersByFilters("", null, null, "")).thenReturn(testUserList);
+
+        // Act
+        ResponseEntity<List<UserDTO>> response = adminController.filterUsers("", null, null, "");
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(testUserList, response.getBody());
+        verify(usuarioService).findUsersByFilters("", null, null, "");
     }
 }
