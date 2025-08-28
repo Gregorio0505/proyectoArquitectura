@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
 import { ComentarioService } from './comentario.service';
 
@@ -6,11 +7,17 @@ describe('ComentarioService', () => {
   let service: ComentarioService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule]
+    });
     service = TestBed.inject(ComentarioService);
   });
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  it('should have getComentariosByMedicamento method', () => {
+    expect(service.getComentariosByMedicamento).toBeDefined();
   });
 });

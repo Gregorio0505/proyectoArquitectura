@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
+import { provideMockStore } from '@ngrx/store/testing';
 
 import { RegisterComponent } from './register.component';
 
@@ -8,7 +10,17 @@ describe('RegisterComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RegisterComponent]
+      imports: [
+        RegisterComponent,
+        RouterTestingModule
+      ],
+      providers: [
+        provideMockStore({
+          initialState: {
+            auth: { user: null, isAuthenticated: false }
+          }
+        })
+      ]
     })
     .compileComponents();
 
@@ -19,5 +31,10 @@ describe('RegisterComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should have registration form', () => {
+    const compiled = fixture.nativeElement;
+    expect(compiled.querySelector('form')).toBeTruthy();
   });
 });
