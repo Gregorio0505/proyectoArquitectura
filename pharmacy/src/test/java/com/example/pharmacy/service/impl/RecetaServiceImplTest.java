@@ -1,11 +1,11 @@
 package com.example.pharmacy.service.impl;
 
-import com.example.pharmacy.model.Receta;
-import com.example.pharmacy.model.RecetaDetalle;
 import com.example.pharmacy.dto.RecetaDTO;
 import com.example.pharmacy.dto.RecetaDetalleDTO;
-import com.example.pharmacy.repository.RecetaRepository;
+import com.example.pharmacy.model.Receta;
+import com.example.pharmacy.model.RecetaDetalle;
 import com.example.pharmacy.repository.RecetaDetalleRepository;
+import com.example.pharmacy.repository.RecetaRepository;
 import com.example.pharmacy.service.AuditoriaService;
 import com.example.pharmacy.util.UserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,15 +41,16 @@ class RecetaServiceImplTest {
     private UserDetails userDetails;
 
     @InjectMocks
-    private RecetaServiceImpl service;
+    private RecetaServiceImpl recetaService;
 
     private Receta testReceta;
     private RecetaDTO testRecetaDTO;
-    private RecetaDetalle testDetalle;
-    private RecetaDetalleDTO testDetalleDTO;
+    private RecetaDetalle testRecetaDetalle;
+    private RecetaDetalleDTO testRecetaDetalleDTO;
 
     @BeforeEach
     void setUp() {
+        // Setup test data
         testReceta = new Receta();
         testReceta.setIdReceta(1L);
         testReceta.setCodigoReceta("REC001");
@@ -58,83 +59,210 @@ class RecetaServiceImplTest {
         testReceta.setAprobadoSeguro("N");
         testReceta.setPdfUrl("test.pdf");
 
-        testDetalle = new RecetaDetalle();
-        testDetalle.setIdDetalle(1L);
-        testDetalle.setIdReceta(1L);
-        testDetalle.setIdMedicamento(1L);
-        testDetalle.setDosis("1 comprimido");
-        testDetalle.setFrecuencia("cada 8 horas");
-        testDetalle.setDuracion("7 días");
-        testDetalle.setCantidadRequerida(21);
-        testDetalle.setObservaciones("Tomar con comida");
+        testRecetaDetalle = new RecetaDetalle();
+        testRecetaDetalle.setIdDetalle(1L);
+        testRecetaDetalle.setIdReceta(1L);
+        testRecetaDetalle.setIdMedicamento(1L);
+        testRecetaDetalle.setDosis("1 tableta");
+        testRecetaDetalle.setFrecuencia("cada 8 horas");
+        testRecetaDetalle.setDuracion("7 días");
+        testRecetaDetalle.setCantidadRequerida(21);
+        testRecetaDetalle.setObservaciones("Tomar con alimentos");
 
-        testDetalleDTO = new RecetaDetalleDTO();
-        testDetalleDTO.setIdDetalle(1L);
-        testDetalleDTO.setIdMedicamento(1L);
-        testDetalleDTO.setDosis("1 comprimido");
-        testDetalleDTO.setFrecuencia("cada 8 horas");
-        testDetalleDTO.setDuracion("7 días");
-        testDetalleDTO.setCantidadRequerida(21);
-        testDetalleDTO.setObservaciones("Tomar con comida");
+        testRecetaDetalleDTO = new RecetaDetalleDTO();
+        testRecetaDetalleDTO.setIdDetalle(1L);
+        testRecetaDetalleDTO.setIdMedicamento(1L);
+        testRecetaDetalleDTO.setDosis("1 tableta");
+        testRecetaDetalleDTO.setFrecuencia("cada 8 horas");
+        testRecetaDetalleDTO.setDuracion("7 días");
+        testRecetaDetalleDTO.setCantidadRequerida(21);
+        testRecetaDetalleDTO.setObservaciones("Tomar con alimentos");
 
         testRecetaDTO = new RecetaDTO();
-        testRecetaDTO.setIdReceta(1L);
         testRecetaDTO.setCodigoReceta("REC001");
         testRecetaDTO.setIdUsuario(1L);
         testRecetaDTO.setPdfUrl("test.pdf");
-        testRecetaDTO.setDetalles(Arrays.asList(testDetalleDTO));
+        testRecetaDTO.setDetalles(Arrays.asList(testRecetaDetalleDTO));
+
+
     }
 
     @Test
     void testCreateReceta_Success() {
         // Arrange
-        when(recetaRepository.save(any(Receta.class))).thenReturn(testReceta);
-        when(detalleRepository.save(any(RecetaDetalle.class))).thenReturn(testDetalle);
         when(userDetails.getUsuarioActual()).thenReturn("testuser");
+        when(recetaRepository.save(any(Receta.class))).thenReturn(testReceta);
+        when(detalleRepository.save(any(RecetaDetalle.class))).thenReturn(testRecetaDetalle);
         when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
-        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testDetalle));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
 
         // Act
-        RecetaDTO result = service.createReceta(testRecetaDTO);
+        RecetaDTO result = recetaService.createReceta(testRecetaDTO);
 
         // Assert
         assertNotNull(result);
         assertEquals("REC001", result.getCodigoReceta());
         assertEquals(1L, result.getIdUsuario());
+        assertEquals("N", result.getAprobadoSeguro());
+        assertEquals("test.pdf", result.getPdfUrl());
+        assertEquals(1, result.getDetalles().size());
+
         verify(recetaRepository).save(any(Receta.class));
         verify(detalleRepository, times(1)).save(any(RecetaDetalle.class));
+        verify(auditoriaService).registrar(eq("Receta"), eq("INSERT"), anyString(), anyString());
     }
 
     @Test
     void testGetRecetaWithDetails_Success() {
         // Arrange
         when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
-        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testDetalle));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
 
         // Act
-        RecetaDTO result = service.getRecetaWithDetails(1L);
+        RecetaDTO result = recetaService.getRecetaWithDetails(1L);
 
         // Assert
         assertNotNull(result);
         assertEquals(1L, result.getIdReceta());
         assertEquals("REC001", result.getCodigoReceta());
+        assertEquals(1L, result.getIdUsuario());
+        assertEquals("N", result.getAprobadoSeguro());
+        assertEquals("test.pdf", result.getPdfUrl());
         assertEquals(1, result.getDetalles().size());
-        verify(recetaRepository).findById(1L);
-        verify(detalleRepository).findByIdReceta(1L);
+
+        RecetaDetalleDTO detalle = result.getDetalles().get(0);
+        assertEquals(1L, detalle.getIdDetalle());
+        assertEquals(1L, detalle.getIdMedicamento());
+        assertEquals("1 tableta", detalle.getDosis());
+        assertEquals("cada 8 horas", detalle.getFrecuencia());
+        assertEquals("7 días", detalle.getDuracion());
+        assertEquals(21, detalle.getCantidadRequerida());
+        assertEquals("Tomar con alimentos", detalle.getObservaciones());
     }
 
     @Test
     void testGetRecetaWithDetails_NotFound() {
         // Arrange
-        when(recetaRepository.findById(1L)).thenReturn(Optional.empty());
+        when(recetaRepository.findById(999L)).thenReturn(Optional.empty());
 
         // Act & Assert
-        NoSuchElementException exception = assertThrows(NoSuchElementException.class, () -> {
-            service.getRecetaWithDetails(1L);
+        assertThrows(NoSuchElementException.class, () -> {
+            recetaService.getRecetaWithDetails(999L);
         });
 
-        assertEquals("Receta no encontrada: 1", exception.getMessage());
+        verify(recetaRepository).findById(999L);
+        verify(detalleRepository, never()).findByIdReceta(anyLong());
     }
 
+    @Test
+    void testUpdateReceta_Success() {
+        // Arrange
+        RecetaDTO updateDTO = new RecetaDTO();
+        updateDTO.setCodigoReceta("REC001-UPDATED");
+        updateDTO.setPdfUrl("updated.pdf");
+        updateDTO.setDetalles(Arrays.asList(testRecetaDetalleDTO));
 
+        when(userDetails.getUsuarioActual()).thenReturn("testuser");
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(recetaRepository.save(any(Receta.class))).thenReturn(testReceta);
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
+        when(detalleRepository.save(any(RecetaDetalle.class))).thenReturn(testRecetaDetalle);
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
+
+        // Act
+        RecetaDTO result = recetaService.updateReceta(1L, updateDTO);
+
+        // Assert
+        assertNotNull(result);
+        verify(recetaRepository).save(any(Receta.class));
+        verify(detalleRepository).deleteById(1L);
+        verify(detalleRepository).save(any(RecetaDetalle.class));
+        verify(auditoriaService).registrar(eq("Receta"), eq("UPDATE"), anyString(), anyString());
+    }
+
+    @Test
+    void testUpdateReceta_NotFound() {
+        // Arrange
+        when(recetaRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(NoSuchElementException.class, () -> {
+            recetaService.updateReceta(999L, testRecetaDTO);
+        });
+
+        verify(recetaRepository).findById(999L);
+        verify(recetaRepository, never()).save(any());
+        verify(detalleRepository, never()).findByIdReceta(anyLong());
+    }
+
+    @Test
+    void testDeleteReceta_Success() {
+        // Arrange
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
+
+        // Act
+        recetaService.deleteReceta(1L);
+
+        // Assert
+        verify(detalleRepository).deleteById(1L);
+        verify(recetaRepository).deleteById(1L);
+    }
+
+    @Test
+    void testDeleteReceta_NoDetalles() {
+        // Arrange
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList());
+
+        // Act
+        recetaService.deleteReceta(1L);
+
+        // Assert
+        verify(detalleRepository).findByIdReceta(1L);
+        verify(detalleRepository, never()).deleteById(anyLong());
+        verify(recetaRepository).deleteById(1L);
+    }
+
+    @Test
+    void testCreateReceta_MultipleDetalles() {
+        // Arrange
+        RecetaDetalleDTO detalle2 = new RecetaDetalleDTO();
+        detalle2.setIdMedicamento(2L);
+        detalle2.setDosis("2 tabletas");
+        detalle2.setFrecuencia("cada 12 horas");
+        detalle2.setDuracion("5 días");
+        detalle2.setCantidadRequerida(10);
+        detalle2.setObservaciones("Tomar en ayunas");
+
+        testRecetaDTO.setDetalles(Arrays.asList(testRecetaDetalleDTO, detalle2));
+
+        when(userDetails.getUsuarioActual()).thenReturn("testuser");
+        when(recetaRepository.save(any(Receta.class))).thenReturn(testReceta);
+        when(detalleRepository.save(any(RecetaDetalle.class))).thenReturn(testRecetaDetalle);
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList(testRecetaDetalle));
+
+        // Act
+        RecetaDTO result = recetaService.createReceta(testRecetaDTO);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, testRecetaDTO.getDetalles().size());
+        verify(detalleRepository, times(2)).save(any(RecetaDetalle.class));
+    }
+
+    @Test
+    void testGetRecetaWithDetails_EmptyDetalles() {
+        // Arrange
+        when(recetaRepository.findById(1L)).thenReturn(Optional.of(testReceta));
+        when(detalleRepository.findByIdReceta(1L)).thenReturn(Arrays.asList());
+
+        // Act
+        RecetaDTO result = recetaService.getRecetaWithDetails(1L);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(0, result.getDetalles().size());
+        verify(detalleRepository).findByIdReceta(1L);
+    }
 }

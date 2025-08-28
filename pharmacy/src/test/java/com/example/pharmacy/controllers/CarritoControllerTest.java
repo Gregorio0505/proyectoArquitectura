@@ -6,6 +6,7 @@ import com.example.pharmacy.model.Usuario;
 import com.example.pharmacy.service.CarritoService;
 import com.example.pharmacy.service.UsuarioService;
 import com.example.pharmacy.repository.CarritoRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,6 +77,11 @@ class CarritoControllerTest {
         SecurityContextHolder.setContext(securityContext);
         lenient().when(authentication.getName()).thenReturn("test@example.com");
         lenient().when(usuarioService.findByCorreo("test@example.com")).thenReturn(testUsuario);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     // ===== TESTS PARA MÉTODOS BÁSICOS =====
