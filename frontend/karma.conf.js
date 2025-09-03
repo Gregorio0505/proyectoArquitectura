@@ -1,6 +1,4 @@
-// Karma configuration file, see link for more information
-// https://karma-runner.github.io/1.0/config/configuration-file.html
-
+// karma.conf.js
 module.exports = function (config) {
   config.set({
     basePath: '',
@@ -12,27 +10,25 @@ module.exports = function (config) {
       require('karma-coverage'),
       require('@angular-devkit/build-angular/plugins/karma')
     ],
-    client: {
-      jasmine: {
-        // you can add configuration options for Jasmine here
-        // the possible options are listed at https://jasmine.github.io/api/edge/Configuration.html
-        // for example, you can disable the random execution with `random: false`
-        // or set a specific seed with `seed: 4321`
-      },
-    },
-    jasmineHtmlReporter: {
-      suppressAll: true // removes the duplicated traces
-    },
+    client: { jasmine: {} },
+    jasmineHtmlReporter: { suppressAll: true },
+
+    // ⬇⬇⬇ GENERAR LCOV PARA SONAR
     coverageReporter: {
-      dir: require('path').join(__dirname, './coverage/frontend'),
-      subdir: '.',
+      // puedes dejar 'coverage' o 'coverage/frontend'; Sonar lo encontrará con el glob
+      dir: require('path').join(__dirname, './coverage'),
+      subdir: '.',                                  // deja el archivo directo en coverage/
       reporters: [
+        { type: 'lcovonly', file: 'lcov.info' },    // <--- NECESARIO PARA SONAR
         { type: 'html' },
         { type: 'text-summary' }
       ]
     },
-    reporters: ['progress', 'kjhtml'],
-    browsers: ['Chrome'],
+
+    // ⬇⬇⬇ AÑADE EL REPORTER 'coverage'
+    reporters: ['progress', 'kjhtml', 'coverage'],
+
+    browsers: ['Chrome'],                           // en CI podrás usar ChromeHeadless
     restartOnFileChange: true
   });
 };
