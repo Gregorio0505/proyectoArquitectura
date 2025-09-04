@@ -1,4 +1,3 @@
-// karma.conf.js
 module.exports = function (config) {
   config.set({
     basePath: '',
@@ -12,7 +11,6 @@ module.exports = function (config) {
     ],
     client: { jasmine: {} },
     jasmineHtmlReporter: { suppressAll: true },
-
     coverageReporter: {
       dir: require('path').join(__dirname, './coverage'),
       subdir: '.',
@@ -23,18 +21,13 @@ module.exports = function (config) {
       ]
     },
     reporters: ['progress', 'kjhtml', 'coverage'],
-
-    // local puedes usar 'Chrome'; en CI usaremos 'ChromeHeadless'
-    browsers: ['Chrome'],
-
-    // launcher headless para CI
+    browsers: ['Chrome'], // local
     customLaunchers: {
       ChromeHeadlessCI: {
         base: 'ChromeHeadless',
         flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
       }
     },
-
     restartOnFileChange: true
   });
 };

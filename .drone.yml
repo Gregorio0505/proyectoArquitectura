@@ -40,16 +40,18 @@ steps:
     event: [ push, pull_request ]
 
 - name: frontend-tests-and-sonar
-  image: zenika/alpine-chrome:with-node-20
+  image: node:20-bullseye
   environment:
     SONAR_HOST_URL:
       from_secret: sonar_host
     SONAR_TOKEN:
       from_secret: sonar_token
-    CHROME_BIN: /usr/bin/chromium-browser
+    CHROME_BIN: /usr/bin/chromium
   extra_hosts:
   - host.docker.internal:host-gateway
   commands:
+  - apt-get update
+  - apt-get install -y chromium
   - cd frontend
   - npm ci
   # Karma necesita un navegador; esta imagen ya trae Chrome.
