@@ -17,19 +17,20 @@ steps:
   - name: backend-tests-and-sonar
     image: maven:3.9-eclipse-temurin-17
     environment:
-      SONAR_HOST_URL: { from_secret: sonar_host }
-      SONAR_TOKEN:    { from_secret: sonar_token }
-    # En Linux, esto hace que host.docker.internal apunte al host
+      SONAR_HOST_URL:
+        from_secret: sonar_host         # http://host.docker.internal:9000
+      SONAR_TOKEN:
+        from_secret: sonar_token        # token de Sonar
     extra_hosts:
       - "host.docker.internal:host-gateway"
     commands:
       - cd pharmacy
       - |
         case "$DRONE_BRANCH" in
-          dev)    KEY=pharmacy-backend-dev ;;
-          qa)     KEY=pharmacy-backend-qa ;;
+          dev)         KEY=pharmacy-backend-dev ;;
+          qa)          KEY=pharmacy-backend-qa ;;
           main|master) KEY=pharmacy-backend-main ;;
-          *)      KEY=pharmacy-backend-dev ;;
+          *)           KEY=pharmacy-backend-dev ;;
         esac
         mvn -B -DskipTests=false clean verify \
           org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
@@ -44,8 +45,10 @@ steps:
   - name: frontend-tests-and-sonar
     image: node:20
     environment:
-      SONAR_HOST_URL: { from_secret: sonar_host }
-      SONAR_TOKEN:    { from_secret: sonar_token }
+      SONAR_HOST_URL:
+        from_secret: sonar_host
+      SONAR_TOKEN:
+        from_secret: sonar_token
     extra_hosts:
       - "host.docker.internal:host-gateway"
     commands:
@@ -54,10 +57,10 @@ steps:
       - npm run test -- --watch=false --code-coverage
       - |
         case "$DRONE_BRANCH" in
-          dev)    KEY=pharmacy-frontend-dev ;;
-          qa)     KEY=pharmacy-frontend-qa ;;
+          dev)         KEY=pharmacy-frontend-dev ;;
+          qa)          KEY=pharmacy-frontend-qa ;;
           main|master) KEY=pharmacy-frontend-main ;;
-          *)      KEY=pharmacy-frontend-dev ;;
+          *)           KEY=pharmacy-frontend-dev ;;
         esac
         npx sonar-scanner \
           -Dsonar.projectKey=$KEY \
@@ -71,6 +74,7 @@ steps:
     when:
       event: [ push, pull_request ]
 
+  # ----- Guarda el cache Maven -----
   - name: maven-cache-save
     image: drillster/drone-volume-cache
     settings:
@@ -80,7 +84,7 @@ steps:
     when:
       event: [ push, pull_request ]
 
-  # ----- Deploy DEV (solo tras merge/push a dev) -----
+  # ----- Deploy DEV (al hacer push/merge a dev) -----
   - name: deploy-dev
     image: docker:26-cli
     volumes:
@@ -95,7 +99,7 @@ steps:
       - backend-tests-and-sonar
       - frontend-tests-and-sonar
 
-  # ----- Deploy QA (solo tras merge/push a qa) -----
+  # ----- Deploy QA (al hacer push/merge a qa) -----
   - name: deploy-qa
     image: docker:26-cli
     volumes:
@@ -110,7 +114,7 @@ steps:
       - backend-tests-and-sonar
       - frontend-tests-and-sonar
 
-  # ----- Deploy PROD (solo tras merge/push a main/master) -----
+  # ----- Deploy PROD (al hacer push/merge a main/master) -----
   - name: deploy-prod
     image: docker:26-cli
     volumes:
@@ -125,29 +129,32 @@ steps:
       - backend-tests-and-sonar
       - frontend-tests-and-sonar
 
-  # ----- Notificación si falla (opcional) -----
+  # ----- Notificación por email si falla cualquier step -----
   - name: notify-on-failure
-  image: appleboy/drone-email
-  settings:
-    host:       { from_secret: smtp_host }   # smtp.gmail.com
-    port:       587                          # STARTTLS
-    username:   { from_secret: smtp_user }   # tu_correo@gmail.com
-    password:   { from_secret: smtp_pass }   # App Password 16 chars
-    from:       { from_secret: smtp_from }   # tu_correo@gmail.com
-    skip_verify: false
-    subject:    "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
-    to:
-      - "josegregoriocoronelcolombo@gmail.com"
-      - "jflores@unis.edu.gt"
-    body: >
-      Repo: ${DRONE_REPO}
-      Build: ${DRONE_BUILD_NUMBER}
-      Branch: ${DRONE_BRANCH}
-      Autor: ${DRONE_COMMIT_AUTHOR}
-      Ver: ${DRONE_BUILD_LINK}
-   when:
-    status: [ failure ]
-
+    image: appleboy/drone-email
+    settings:
+      host:
+        from_secret: smtp_host          # smtp.gmail.com
+      port: 587                         # STARTTLS
+      username:
+        from_secret: smtp_user          # tu_correo@gmail.com
+      password:
+        from_secret: smtp_pass          # App Password de Google (16 chars)
+      from:
+        from_secret: smtp_from          # tu_correo@gmail.com
+      skip_verify: false
+      subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
+      to:
+        - "josegregoriocoronelcolombo@gmail.com"
+        - "jflores@unis.edu.gt"
+      body: >
+        Repo: ${DRONE_REPO}
+        Build: ${DRONE_BUILD_NUMBER}
+        Branch: ${DRONE_BRANCH}
+        Autor: ${DRONE_COMMIT_AUTHOR}
+        Ver: ${DRONE_BUILD_LINK}
+    when:
+      status: [ failure ]
 
 volumes:
   - name: dockersock
