@@ -39,6 +39,7 @@ steps:
   when:
     event: [ push, pull_request ]
 
+# ---------- Frontend en dos pasos (tests y luego sonar) ----------
 - name: frontend-tests
   image: node:20-bullseye
   environment:
@@ -50,6 +51,7 @@ steps:
   - apt-get install -y chromium ca-certificates fonts-liberation
   - cd frontend
   - npm ci
+  # Usa tu launcher headless con --no-sandbox (ChromeHeadlessCI en karma.conf.js)
   - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
   when:
     event: [ push, pull_request ]
@@ -61,6 +63,8 @@ steps:
       from_secret: sonar_host
     SONAR_TOKEN:
       from_secret: sonar_token
+  extra_hosts:
+  - host.docker.internal:host-gateway
   commands:
   - cd frontend
   - |
@@ -83,7 +87,7 @@ steps:
     event: [ push, pull_request ]
   depends_on:
   - frontend-tests
-
+# ---------------------------------------------------------------
 
 - name: maven-cache-save
   image: drillster/drone-volume-cache
@@ -106,7 +110,7 @@ steps:
     branch: [ dev ]
   depends_on:
   - backend-tests-and-sonar
-  - frontend-tests-and-sonar
+  - frontend-sonar
 
 - name: deploy-qa
   image: docker:26-cli
@@ -120,7 +124,7 @@ steps:
     branch: [ qa ]
   depends_on:
   - backend-tests-and-sonar
-  - frontend-tests-and-sonar
+  - frontend-sonar
 
 - name: deploy-prod
   image: docker:26-cli
@@ -134,8 +138,9 @@ steps:
     branch: [ main, master ]
   depends_on:
   - backend-tests-and-sonar
-  - frontend-tests-and-sonar
+  - frontend-sonar
 
+# Notificación por correo en caso de fallo (sin depends_on para que no se bloquee)
 - name: notify-on-failure
   image: appleboy/drone-email
   settings:
