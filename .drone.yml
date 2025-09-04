@@ -145,7 +145,7 @@ steps:
       Branch: ${DRONE_BRANCH}
       Autor: ${DRONE_COMMIT_AUTHOR}
       Ver: ${DRONE_BUILD_LINK}
-  when:
+   when:
     status: [ failure ]
 
 
