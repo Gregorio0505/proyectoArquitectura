@@ -13,22 +13,28 @@ module.exports = function (config) {
     client: { jasmine: {} },
     jasmineHtmlReporter: { suppressAll: true },
 
-    // ⬇⬇⬇ GENERAR LCOV PARA SONAR
     coverageReporter: {
-      // puedes dejar 'coverage' o 'coverage/frontend'; Sonar lo encontrará con el glob
       dir: require('path').join(__dirname, './coverage'),
-      subdir: '.',                                  // deja el archivo directo en coverage/
+      subdir: '.',
       reporters: [
-        { type: 'lcovonly', file: 'lcov.info' },    // <--- NECESARIO PARA SONAR
+        { type: 'lcovonly', file: 'lcov.info' },
         { type: 'html' },
         { type: 'text-summary' }
       ]
     },
-
-    // ⬇⬇⬇ AÑADE EL REPORTER 'coverage'
     reporters: ['progress', 'kjhtml', 'coverage'],
 
-    browsers: ['Chrome'],                           // en CI podrás usar ChromeHeadless
+    // local puedes usar 'Chrome'; en CI usaremos 'ChromeHeadless'
+    browsers: ['Chrome'],
+
+    // launcher headless para CI
+    customLaunchers: {
+      ChromeHeadlessCI: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+      }
+    },
+
     restartOnFileChange: true
   });
 };
