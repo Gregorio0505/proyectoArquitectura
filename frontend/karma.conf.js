@@ -1,3 +1,4 @@
+// karma.conf.js
 module.exports = function (config) {
   config.set({
     basePath: '',
@@ -11,6 +12,7 @@ module.exports = function (config) {
     ],
     client: { jasmine: {} },
     jasmineHtmlReporter: { suppressAll: true },
+
     coverageReporter: {
       dir: require('path').join(__dirname, './coverage'),
       subdir: '.',
@@ -21,13 +23,18 @@ module.exports = function (config) {
       ]
     },
     reporters: ['progress', 'kjhtml', 'coverage'],
-    browsers: ['Chrome'], // local
+
+    // Local (tu máquina):
+    browsers: ['Chrome'],
+
+    // CI (Drone): navegador headless con flags root-safe
     customLaunchers: {
       ChromeHeadlessCI: {
         base: 'ChromeHeadless',
         flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
       }
     },
+
     restartOnFileChange: true
   });
 };

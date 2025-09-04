@@ -51,12 +51,12 @@ steps:
   - host.docker.internal:host-gateway
   commands:
   - apt-get update
-  - apt-get install -y chromium
+  - apt-get install -y chromium ca-certificates fonts-liberation
   - cd frontend
   - npm ci
   # Karma necesita un navegador; esta imagen ya trae Chrome.
   # Ejecutamos tests en headless para generar coverage/lcov.info
-  - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadless
+  - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
   - |
     case "$DRONE_BRANCH" in
       dev)         KEY=pharmacy-frontend-dev ;;
