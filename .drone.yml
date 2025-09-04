@@ -127,26 +127,27 @@ steps:
 
   # ----- Notificación si falla (opcional) -----
   - name: notify-on-failure
-    image: appleboy/drone-email
-    settings:
-    host:     { from_secret: smtp_host }   # smtp.gmail.com
-    port:     587                          # STARTTLS
-    username: { from_secret: smtp_user }   # tu_correo@gmail.com
-    password: { from_secret: smtp_pass }   # App Password (16 chars, sin espacios)
-    from:     { from_secret: smtp_from }   # tu_correo@gmail.com
-    skip_verify: false                     # con Gmail no hace falta desactivar verificación
-    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
+  image: appleboy/drone-email
+  settings:
+    host:       { from_secret: smtp_host }   # smtp.gmail.com
+    port:       587                          # STARTTLS
+    username:   { from_secret: smtp_user }   # tu_correo@gmail.com
+    password:   { from_secret: smtp_pass }   # App Password 16 chars
+    from:       { from_secret: smtp_from }   # tu_correo@gmail.com
+    skip_verify: false
+    subject:    "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
     to:
       - "josegregoriocoronelcolombo@gmail.com"
-      - "jflores@unis.edu.gt.com"
+      - "jflores@unis.edu.gt"
     body: >
       Repo: ${DRONE_REPO}
       Build: ${DRONE_BUILD_NUMBER}
       Branch: ${DRONE_BRANCH}
       Autor: ${DRONE_COMMIT_AUTHOR}
       Ver: ${DRONE_BUILD_LINK}
-    when:
+  when:
     status: [ failure ]
+
 
 volumes:
   - name: dockersock
