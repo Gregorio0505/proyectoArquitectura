@@ -23,6 +23,22 @@ services:
       # DRONE_USER_FILTER: ${DRONE_ADMIN_USER}
       DRONE_LOGS_DEBUG: "true"
 
+
+#  drone-runner:
+#    image: drone/drone-runner-docker:1
+#    container_name: drone-runner
+#    depends_on:
+#      - drone-server
+#    restart: always
+#    environment:
+#      DRONE_RPC_PROTO: ${DRONE_SERVER_PROTO}
+#      DRONE_RPC_HOST: drone-server
+#      DRONE_RPC_SECRET: ${DRONE_RPC_SECRET}
+#      DRONE_RUNNER_CAPACITY: 2
+#      DRONE_RUNNER_NAME: runner-1
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+
   drone-runner:
     image: drone/drone-runner-docker:1
     container_name: drone-runner
@@ -30,7 +46,8 @@ services:
       - drone-server
     restart: always
     environment:
-      DRONE_RPC_PROTO: ${DRONE_SERVER_PROTO}
+      # ¡OJO! El RPC es dentro de docker -> http
+      DRONE_RPC_PROTO: http
       DRONE_RPC_HOST: drone-server
       DRONE_RPC_SECRET: ${DRONE_RPC_SECRET}
       DRONE_RUNNER_CAPACITY: 2
