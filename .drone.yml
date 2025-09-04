@@ -39,13 +39,9 @@ steps:
   when:
     event: [ push, pull_request ]
 
-- name: frontend-tests-and-sonar
+- name: frontend-tests
   image: node:20-bullseye
   environment:
-    SONAR_HOST_URL:
-      from_secret: sonar_host
-    SONAR_TOKEN:
-      from_secret: sonar_token
     CHROME_BIN: /usr/bin/chromium
   extra_hosts:
   - host.docker.internal:host-gateway
@@ -54,9 +50,19 @@ steps:
   - apt-get install -y chromium ca-certificates fonts-liberation
   - cd frontend
   - npm ci
-  # Karma necesita un navegador; esta imagen ya trae Chrome.
-  # Ejecutamos tests en headless para generar coverage/lcov.info
   - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
+  when:
+    event: [ push, pull_request ]
+
+- name: frontend-sonar
+  image: sonarsource/sonar-scanner-cli:5
+  environment:
+    SONAR_HOST_URL:
+      from_secret: sonar_host
+    SONAR_TOKEN:
+      from_secret: sonar_token
+  commands:
+  - cd frontend
   - |
     case "$DRONE_BRANCH" in
       dev)         KEY=pharmacy-frontend-dev ;;
@@ -64,7 +70,7 @@ steps:
       main|master) KEY=pharmacy-frontend-main ;;
       *)           KEY=pharmacy-frontend-dev ;;
     esac
-    npx sonar-scanner \
+    sonar-scanner \
       -Dsonar.projectKey=$KEY \
       -Dsonar.sources=src \
       -Dsonar.exclusions=**/*.spec.ts,**/dist/**,**/node_modules/**,**/.angular/**,**/coverage/**,**/e2e/**,**/cypress/**,**/assets/**,**/environments/**,**/*.config.js,**/*.config.ts \
@@ -75,6 +81,9 @@ steps:
       -Dsonar.token=$SONAR_TOKEN
   when:
     event: [ push, pull_request ]
+  depends_on:
+  - frontend-tests
+
 
 - name: maven-cache-save
   image: drillster/drone-volume-cache
