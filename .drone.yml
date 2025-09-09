@@ -41,14 +41,12 @@ steps:
 
 # ---------- Frontend en dos pasos (tests y luego sonar) ----------
 - name: frontend-tests
-  image: node:20-bullseye
+  image: cypress/included:13.7.3
   environment:
-    CHROME_BIN: /usr/bin/chromium
+    CHROME_BIN: /usr/bin/google-chrome
   extra_hosts:
   - host.docker.internal:host-gateway
   commands:
-  - apt-get update
-  - apt-get install -y chromium ca-certificates fonts-liberation
   - cd frontend
   - npm ci
   # Usa tu launcher headless con --no-sandbox (ChromeHeadlessCI en karma.conf.js)
