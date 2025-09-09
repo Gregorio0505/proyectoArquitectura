@@ -1,3 +1,15 @@
-FROM gvenzl/oracle-xe:latest
+#FROM gvenzl/oracle-xe:latest
 # El entrypoint de la imagen ejecuta todo lo que haya en esta ruta al primer arranque
-COPY . /docker-entrypoint-initdb.d/
+#COPY . /docker-entrypoint-initdb.d/
+
+FROM gvenzl/oracle-xe:latest
+
+# --- Copiamos los SQL en el orden exacto que quieres que se apliquen ---
+# (El entrypoint de la imagen ejecuta todo lo que esté en /docker-entrypoint-initdb.d
+#  la PRIMERA vez que arranca con un volumen de datos vacío)
+COPY 00_init.sql                     /docker-entrypoint-initdb.d/
+COPY 01_verification_token.sql       /docker-entrypoint-initdb.d/
+COPY 02_insert_roles.sql             /docker-entrypoint-initdb.d/
+COPY 03_cart_page_modification.sql   /docker-entrypoint-initdb.d/
+COPY 04_seed_users.sql               /docker-entrypoint-initdb.d/
+COPY 05_update_user_password.sql     /docker-entrypoint-initdb.d/
