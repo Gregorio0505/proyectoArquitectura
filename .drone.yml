@@ -32,14 +32,27 @@ steps:
     event: [ pull_request ]
 
 - name: frontend-tests
+  # Imagen con Chrome; evitamos descargar binario de Cypress (no lo usamos para unit tests)
   image: cypress/included:13.7.3
   environment:
     CHROME_BIN: /usr/bin/google-chrome
+    CYPRESS_INSTALL_BINARY: "0"          # <-- evita postinstall y descarga de ~150MB
+    npm_config_audit: "false"
+    npm_config_fund: "false"
+    npm_config_progress: "false"
+    npm_config_loglevel: "warn"
+    npm_config_prefer_offline: "true"
+  volumes:
+  - name: npm-cache
+    path: /root/.npm
+  - name: cypress-cache
+    path: /root/.cache
   extra_hosts:
   - host.docker.internal:host-gateway
   commands:
   - cd frontend
-  - npm ci
+  - node -v && npm -v && google-chrome --version
+  - npm ci --no-audit --no-fund --progress=false --prefer-offline --no-optional
   - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
   when:
     event: [ pull_request ]
@@ -77,7 +90,6 @@ steps:
   - frontend-tests
 
 # -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
-# Este step genera pharmacy/target/*.jar para que el Dockerfile pueda copiarlo
 - name: build-backend-artifact
   image: maven:3.9-eclipse-temurin-17
   commands:
@@ -161,6 +173,12 @@ volumes:
 - name: dockersock
   host:
     path: /var/run/docker.sock
+- name: npm-cache
+  host:
+    path: /tmp/drone-npm-cache
+- name: cypress-cache
+  host:
+    path: /tmp/drone-cypress-cache
 
 trigger:
   event: [ push, pull_request ]
