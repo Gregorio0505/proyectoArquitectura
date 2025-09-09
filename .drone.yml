@@ -32,7 +32,6 @@ steps:
     event: [ pull_request ]
 
 - name: frontend-tests
-  # Imagen que YA trae Node + Google Chrome (evita apt-get en la U)
   image: cypress/included:13.7.3
   environment:
     CHROME_BIN: /usr/bin/google-chrome
@@ -41,7 +40,6 @@ steps:
   commands:
   - cd frontend
   - npm ci
-  # Usa el launcher con --no-sandbox que agregaste en karma.conf.js
   - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
   when:
     event: [ pull_request ]
@@ -78,6 +76,17 @@ steps:
   depends_on:
   - frontend-tests
 
+# -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
+# Este step genera pharmacy/target/*.jar para que el Dockerfile pueda copiarlo
+- name: build-backend-artifact
+  image: maven:3.9-eclipse-temurin-17
+  commands:
+  - cd pharmacy
+  - mvn -B -DskipTests clean package
+  when:
+    event: [ push ]
+    branch: [ dev, qa, main, master ]
+
 # -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
 - name: deploy-dev
   image: docker:26-cli
@@ -90,6 +99,8 @@ steps:
   when:
     event: [ push ]
     branch: [ dev ]
+  depends_on:
+  - build-backend-artifact
 
 - name: deploy-qa
   image: docker:26-cli
@@ -102,6 +113,8 @@ steps:
   when:
     event: [ push ]
     branch: [ qa ]
+  depends_on:
+  - build-backend-artifact
 
 - name: deploy-prod
   image: docker:26-cli
@@ -114,6 +127,8 @@ steps:
   when:
     event: [ push ]
     branch: [ main, master ]
+  depends_on:
+  - build-backend-artifact
 
 # -------------------- NOTIFICACIÓN SI FALLA --------------------
 - name: notify-on-failure
@@ -147,7 +162,6 @@ volumes:
   host:
     path: /var/run/docker.sock
 
-# Aceptamos push y PR, pero cada step ya filtra qué evento ejecutar
 trigger:
   event: [ push, pull_request ]
   branch: [ dev, qa, main, master ]
