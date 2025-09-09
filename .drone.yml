@@ -3,15 +3,7 @@ type: docker
 name: CI-and-Deploy
 
 steps:
-- name: maven-cache-restore
-  image: drillster/drone-volume-cache
-  settings:
-    restore: true
-    mount:
-    - /root/.m2
-  when:
-    event: [ push, pull_request ]
-
+# -------------------- CI PARA PR (solo pull_request) --------------------
 - name: backend-tests-and-sonar
   image: maven:3.9-eclipse-temurin-17
   environment:
@@ -24,7 +16,7 @@ steps:
   commands:
   - cd pharmacy
   - |
-    case "$DRONE_BRANCH" in
+    case "$DRONE_TARGET_BRANCH" in
       dev)         KEY=pharmacy-backend-dev ;;
       qa)          KEY=pharmacy-backend-qa ;;
       main|master) KEY=pharmacy-backend-main ;;
@@ -37,10 +29,10 @@ steps:
       -Dsonar.token=$SONAR_TOKEN \
       -Dsonar.qualitygate.wait=true
   when:
-    event: [ push, pull_request ]
+    event: [ pull_request ]
 
-# ---------- Frontend en dos pasos (tests y luego sonar) ----------
 - name: frontend-tests
+  # Imagen que YA trae Node + Google Chrome (evita apt-get en la U)
   image: cypress/included:13.7.3
   environment:
     CHROME_BIN: /usr/bin/google-chrome
@@ -49,10 +41,10 @@ steps:
   commands:
   - cd frontend
   - npm ci
-  # Usa tu launcher headless con --no-sandbox (ChromeHeadlessCI en karma.conf.js)
+  # Usa el launcher con --no-sandbox que agregaste en karma.conf.js
   - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
   when:
-    event: [ push, pull_request ]
+    event: [ pull_request ]
 
 - name: frontend-sonar
   image: sonarsource/sonar-scanner-cli:5
@@ -66,7 +58,7 @@ steps:
   commands:
   - cd frontend
   - |
-    case "$DRONE_BRANCH" in
+    case "$DRONE_TARGET_BRANCH" in
       dev)         KEY=pharmacy-frontend-dev ;;
       qa)          KEY=pharmacy-frontend-qa ;;
       main|master) KEY=pharmacy-frontend-main ;;
@@ -82,33 +74,22 @@ steps:
       -Dsonar.host.url=$SONAR_HOST_URL \
       -Dsonar.token=$SONAR_TOKEN
   when:
-    event: [ push, pull_request ]
+    event: [ pull_request ]
   depends_on:
   - frontend-tests
-# ---------------------------------------------------------------
 
-- name: maven-cache-save
-  image: drillster/drone-volume-cache
-  settings:
-    rebuild: true
-    mount:
-    - /root/.m2
-  when:
-    event: [ push, pull_request ]
-
+# -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
 - name: deploy-dev
   image: docker:26-cli
   volumes:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
+  - docker compose -f docker-compose.dev.yml down --remove-orphans || true
   - docker compose -f docker-compose.dev.yml up -d --build
   when:
     event: [ push ]
     branch: [ dev ]
-  depends_on:
-  - backend-tests-and-sonar
-  - frontend-sonar
 
 - name: deploy-qa
   image: docker:26-cli
@@ -116,13 +97,11 @@ steps:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
+  - docker compose -f docker-compose.qa.yml down --remove-orphans || true
   - docker compose -f docker-compose.qa.yml up -d --build
   when:
     event: [ push ]
     branch: [ qa ]
-  depends_on:
-  - backend-tests-and-sonar
-  - frontend-sonar
 
 - name: deploy-prod
   image: docker:26-cli
@@ -130,15 +109,13 @@ steps:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
+  - docker compose -f docker-compose.prod.yml down --remove-orphans || true
   - docker compose -f docker-compose.prod.yml up -d --build
   when:
     event: [ push ]
     branch: [ main, master ]
-  depends_on:
-  - backend-tests-and-sonar
-  - frontend-sonar
 
-# Notificación por correo en caso de fallo (sin depends_on para que no se bloquee)
+# -------------------- NOTIFICACIÓN SI FALLA --------------------
 - name: notify-on-failure
   image: appleboy/drone-email
   settings:
@@ -170,6 +147,7 @@ volumes:
   host:
     path: /var/run/docker.sock
 
+# Aceptamos push y PR, pero cada step ya filtra qué evento ejecutar
 trigger:
   event: [ push, pull_request ]
   branch: [ dev, qa, main, master ]
