@@ -1,0 +1,3 @@
+FROM gvenzl/oracle-xe:latest
+# El entrypoint de la imagen ejecuta todo lo que haya en esta ruta al primer arranque
+COPY . /docker-entrypoint-initdb.d/
