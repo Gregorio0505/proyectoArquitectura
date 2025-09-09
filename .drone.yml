@@ -80,7 +80,7 @@ steps:
   - frontend-tests
 
 # -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
-# Este step genera pharmacy/target/*.jar para que el Dockerfile pueda copiarlo
+# Genera pharmacy/target/*.jar para que el Dockerfile del BE pueda copiarlo
 - name: build-backend-artifact
   image: maven:3.9-eclipse-temurin-17
   commands:
@@ -91,14 +91,21 @@ steps:
     branch: [ dev, qa, main, master ]
 
 # -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
+# Opción A: limpieza agresiva para evitar conflictos por container_name
 - name: deploy-dev
   image: docker:26-cli
   volumes:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
-  - docker compose -f docker-compose.dev.yml down --remove-orphans || true
-  - docker compose -f docker-compose.dev.yml up -d --build
+  # Down del stack con project name fijo
+  - docker compose -p pharmacy-dev -f docker-compose.dev.yml down --remove-orphans || true
+  # Elimina contenedores con nombre fijo si quedaron vivos de corridas anteriores
+  - docker rm -f oracle-xe-dev-pharmacy backend-dev-pharmacy frontend-dev-pharmacy 2>/dev/null || true
+  # Limpia red si quedó colgada
+  - docker network rm pharmacy-dev-net 2>/dev/null || true
+  # Levanta con project name fijo
+  - docker compose -p pharmacy-dev -f docker-compose.dev.yml up -d --build
   when:
     event: [ push ]
     branch: [ dev ]
@@ -111,8 +118,10 @@ steps:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
-  - docker compose -f docker-compose.qa.yml down --remove-orphans || true
-  - docker compose -f docker-compose.qa.yml up -d --build
+  - docker compose -p pharmacy-qa -f docker-compose.qa.yml down --remove-orphans || true
+  - docker rm -f oracle-xe-qa-pharmacy backend-qa-pharmacy frontend-qa-pharmacy 2>/dev/null || true
+  - docker network rm pharmacy-qa-net 2>/dev/null || true
+  - docker compose -p pharmacy-qa -f docker-compose.qa.yml up -d --build
   when:
     event: [ push ]
     branch: [ qa ]
@@ -125,8 +134,10 @@ steps:
   - name: dockersock
     path: /var/run/docker.sock
   commands:
-  - docker compose -f docker-compose.prod.yml down --remove-orphans || true
-  - docker compose -f docker-compose.prod.yml up -d --build
+  - docker compose -p pharmacy-prod -f docker-compose.prod.yml down --remove-orphans || true
+  - docker rm -f oracle-xe-prod-pharmacy backend-prod-pharmacy frontend-prod-pharmacy 2>/dev/null || true
+  - docker network rm pharmacy-prod-net 2>/dev/null || true
+  - docker compose -p pharmacy-prod -f docker-compose.prod.yml up -d --build
   when:
     event: [ push ]
     branch: [ main, master ]
