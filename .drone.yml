@@ -168,8 +168,10 @@ steps:
       Branch: ${DRONE_BRANCH}
       Autor: ${DRONE_COMMIT_AUTHOR}
       Ver: ${DRONE_BUILD_LINK}
+      Error: El Quality Gate falló en la etapa de SonarQube
   when:
     status: [ failure ]
+    event: [ pull_request ]
 
 volumes:
 - name: dockersock
