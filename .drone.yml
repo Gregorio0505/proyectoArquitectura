@@ -155,8 +155,8 @@ steps:
       from_secret: smtp_user
     password:
       from_secret: smtp_pass
-    from:
-      from_secret: smtp_from
+    from: josegregoriocoronelcolombo@gmail.com
+      #from_secret: smtp_from
     skip_verify: false
     subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
     to:
@@ -171,7 +171,7 @@ steps:
       Error: El Quality Gate falló en la etapa de SonarQube
   when:
     status: [ failure ]
-    event: [ pull_request ]
+    #event: [ pull_request ]
 
 volumes:
 - name: dockersock
