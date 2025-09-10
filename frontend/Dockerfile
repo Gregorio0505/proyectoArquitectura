@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci --only=production
+#RUN npm ci --only=production
+RUN npm ci --no-audit --no-fund
 
 # Copiar el código fuente
 COPY . .
@@ -16,7 +17,8 @@ COPY . .
 ARG CONFIG=production
 
 # Construir la aplicación con la configuración especificada
-RUN npm run build -- --configuration=$CONFIG
+#RUN npm run build -- --configuration=$CONFIG
+RUN npx ng build --configuration=$CONFIG
 
 # Etapa 2: Servir la app con NGINX
 FROM nginx:alpine
