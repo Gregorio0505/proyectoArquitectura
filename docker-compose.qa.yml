@@ -16,38 +16,83 @@
 #  oracle-xe-net:
 #    external: true
 
-version: "3.8"
-services:
+#JENKINS
+#version: "3.8"
+#services:
   # Base de datos Oracle para qa
+#  oracle-xe-qa:
+#    image: gvenzl/oracle-xe:latest
+#    container_name: oracle-xe-qa-pharmacy
+#    environment:
+#      - ORACLE_PASSWORD=LocalOraclePass2
+#    ports:
+#      - "1524:1521"
+#    volumes:
+#      - ./oracle-data-qa:/opt/oracle/oradata
+#      - ./db-scripts:/docker-entrypoint-initdb.d
+#    networks:
+#      - pharmacy-qa-net
+
+  # Backend para qa
+#  backend-qa:
+#    build:
+#      context: ./pharmacy
+#      dockerfile: Dockerfile
+#    container_name: backend-qa-pharmacy
+#    ports:
+#      - "8083:8080"
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=qa
+#    depends_on:
+#      - oracle-xe-qa
+#    networks:
+#      - pharmacy-qa-net
+
+  # Frontend para qa
+#  frontend-qa:
+#    build:
+#     context: ./frontend
+#      dockerfile: Dockerfile
+#      args:
+#        CONFIG: qa
+#    container_name: frontend-qa-pharmacy
+#    ports:
+#      - "4301:80"
+#    depends_on:
+#      - backend-qa
+#    networks:
+#      - pharmacy-qa-net
+
+#networks:
+#  pharmacy-qa-net:
+#    external: false
+
+services:
   oracle-xe-qa:
-    image: gvenzl/oracle-xe:latest
+    build:
+      context: ./db-scripts
+      dockerfile: Dockerfile.oracle
+    image: oracle-xe-with-init:qa
     container_name: oracle-xe-qa-pharmacy
     environment:
       - ORACLE_PASSWORD=LocalOraclePass2
     ports:
       - "1524:1521"
     volumes:
-      - ./oracle-data-qa:/opt/oracle/oradata
-      - ./db-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - pharmacy-qa-net
+      - oracle-data-qa:/opt/oracle/oradata
+    networks: [pharmacy-qa-net]
 
-  # Backend para qa
   backend-qa:
     build:
       context: ./pharmacy
       dockerfile: Dockerfile
     container_name: backend-qa-pharmacy
-    ports:
-      - "8083:8080"
+    ports: ["8083:8080"]
     environment:
       - SPRING_PROFILES_ACTIVE=qa
-    depends_on:
-      - oracle-xe-qa
-    networks:
-      - pharmacy-qa-net
+    depends_on: [oracle-xe-qa]
+    networks: [pharmacy-qa-net]
 
-  # Frontend para qa
   frontend-qa:
     build:
       context: ./frontend
@@ -55,14 +100,13 @@ services:
       args:
         CONFIG: qa
     container_name: frontend-qa-pharmacy
-    ports:
-      - "4301:80"
-    depends_on:
-      - backend-qa
-    networks:
-      - pharmacy-qa-net
+    ports: ["4301:80"]
+    depends_on: [backend-qa]
+    networks: [pharmacy-qa-net]
+
+volumes:
+  oracle-data-qa:
 
 networks:
   pharmacy-qa-net:
     external: false
-

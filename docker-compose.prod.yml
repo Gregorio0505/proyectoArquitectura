@@ -1,35 +1,81 @@
-version: "3.8"
-services:
+#JENKINS
+#version: "3.8"
+#services:
   # Base de datos Oracle para prod
+#  oracle-xe-prod:
+#    image: gvenzl/oracle-xe:latest
+#    container_name: oracle-xe-prod-pharmacy
+#    environment:
+#      - ORACLE_PASSWORD=LocalOraclePass2
+#    ports:
+#      - "1525:1521"
+#    volumes:
+#      - ./oracle-data-prod:/opt/oracle/oradata
+#      - ./db-scripts:/docker-entrypoint-initdb.d
+#    networks:
+#      - pharmacy-prod-net
+
+  # Backend para prod
+#  backend-prod:
+#    build:
+#      context: ./pharmacy
+#      dockerfile: Dockerfile
+#    container_name: backend-prod-pharmacy
+#    ports:
+#      - "8084:8080"
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=prod
+#    depends_on:
+#      - oracle-xe-prod
+#    networks:
+#      - pharmacy-prod-net
+
+  # Frontend para prod
+#  frontend-prod:
+#    build:
+#      context: ./frontend
+#      dockerfile: Dockerfile
+#      args:
+#        CONFIG: production
+#    container_name: frontend-prod-pharmacy
+#    ports:
+#      - "4302:80"
+#    depends_on:
+#      - backend-prod
+#    networks:
+#      - pharmacy-prod-net
+
+#networks:
+#  pharmacy-prod-net:
+#    external: false
+
+
+services:
   oracle-xe-prod:
-    image: gvenzl/oracle-xe:latest
+    build:
+      context: ./db-scripts
+      dockerfile: Dockerfile.oracle
+    image: oracle-xe-with-init:prod
     container_name: oracle-xe-prod-pharmacy
     environment:
       - ORACLE_PASSWORD=LocalOraclePass2
     ports:
       - "1525:1521"
     volumes:
-      - ./oracle-data-prod:/opt/oracle/oradata
-      - ./db-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - pharmacy-prod-net
+      - oracle-data-prod:/opt/oracle/oradata
+    networks: [pharmacy-prod-net]
 
-  # Backend para prod
   backend-prod:
     build:
       context: ./pharmacy
       dockerfile: Dockerfile
     container_name: backend-prod-pharmacy
-    ports:
-      - "8084:8080"
+    ports: ["8084:8080"]
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-    depends_on:
-      - oracle-xe-prod
-    networks:
-      - pharmacy-prod-net
+    depends_on: [oracle-xe-prod]
+    networks: [pharmacy-prod-net]
 
-  # Frontend para prod
   frontend-prod:
     build:
       context: ./frontend
@@ -37,12 +83,12 @@ services:
       args:
         CONFIG: production
     container_name: frontend-prod-pharmacy
-    ports:
-      - "4302:80"
-    depends_on:
-      - backend-prod
-    networks:
-      - pharmacy-prod-net
+    ports: ["4302:80"]
+    depends_on: [backend-prod]
+    networks: [pharmacy-prod-net]
+
+volumes:
+  oracle-data-prod:
 
 networks:
   pharmacy-prod-net:
