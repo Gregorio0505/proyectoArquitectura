@@ -1,195 +1,160 @@
+---
 kind: pipeline
 type: docker
 name: CI-and-Deploy
 
 steps:
-# -------------------- CI PARA PR (solo pull_request) --------------------
-- name: backend-tests-and-sonar
-  image: maven:3.9-eclipse-temurin-17
-  environment:
-    SONAR_HOST_URL:
-      from_secret: sonar_host
-    SONAR_TOKEN:
-      from_secret: sonar_token
-  extra_hosts:
-  - host.docker.internal:host-gateway
-  commands:
-  - cd pharmacy
-  - |
-    case "$DRONE_TARGET_BRANCH" in
-      dev)         KEY=pharmacy-backend-dev ;;
-      qa)          KEY=pharmacy-backend-qa ;;
-      main|master) KEY=pharmacy-backend-main ;;
-      *)           KEY=pharmacy-backend-dev ;;
-    esac
-    mvn -B -DskipTests=false clean verify \
-      org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
-      -Dsonar.projectKey=$KEY \
-      -Dsonar.host.url=$SONAR_HOST_URL \
-      -Dsonar.token=$SONAR_TOKEN \
-      -Dsonar.qualitygate.wait=true
-  when:
-    event: [ pull_request ]
+  # -------------------- CI PARA PR (solo pull_request) --------------------
+  - name: backend-tests-and-sonar
+    image: maven:3.9-eclipse-temurin-17
+    environment:
+      SONAR_HOST_URL:
+        from_secret: sonar_host
+      SONAR_TOKEN:
+        from_secret: sonar_token
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    commands:
+      - cd pharmacy
+      - |
+        case "$DRONE_TARGET_BRANCH" in
+          dev)         KEY=pharmacy-backend-dev ;;
+          qa)          KEY=pharmacy-backend-qa ;;
+          main|master) KEY=pharmacy-backend-main ;;
+          *)           KEY=pharmacy-backend-dev ;;
+        esac
+        mvn -B -DskipTests=false clean verify \
+          org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
+          -Dsonar.projectKey=$KEY \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.token=$SONAR_TOKEN \
+          -Dsonar.qualitygate.wait=true
+    when:
+      event: [ pull_request ]
 
-- name: frontend-tests
-  image: cypress/included:13.7.3
-  environment:
-    CHROME_BIN: /usr/bin/google-chrome
-    CI: "true"
-    NPM_CONFIG_AUDIT: "false"
-    NPM_CONFIG_FUND: "false"
-  extra_hosts:
-  - host.docker.internal:host-gateway
-  commands:
-  - cd frontend
-  - npm ci --no-audit --no-fund
-  - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
-  when:
-    event: [ pull_request ]
+  - name: frontend-tests
+    image: cypress/included:13.7.3
+    environment:
+      CHROME_BIN: /usr/bin/google-chrome
+      CI: "true"
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    commands:
+      - cd frontend
+      - npm ci --no-audit --no-fund
+      - npm run test -- --watch=false --code-coverage --browsers=ChromeHeadlessCI
+    when:
+      event: [ pull_request ]
 
-- name: frontend-sonar
-  image: sonarsource/sonar-scanner-cli:5
-  environment:
-    SONAR_HOST_URL:
-      from_secret: sonar_host
-    SONAR_TOKEN:
-      from_secret: sonar_token
-  extra_hosts:
-  - host.docker.internal:host-gateway
-  commands:
-  - cd frontend
-  - |
-    case "$DRONE_TARGET_BRANCH" in
-      dev)         KEY=pharmacy-frontend-dev ;;
-      qa)          KEY=pharmacy-frontend-qa ;;
-      main|master) KEY=pharmacy-frontend-main ;;
-      *)           KEY=pharmacy-frontend-dev ;;
-    esac
-    sonar-scanner \
-      -Dsonar.projectKey=$KEY \
-      -Dsonar.sources=src \
-      -Dsonar.exclusions=**/*.spec.ts,**/dist/**,**/node_modules/**,**/.angular/**,**/coverage/**,**/e2e/**,**/cypress/**,**/assets/**,**/environments/**,**/*.config.js,**/*.config.ts \
-      -Dsonar.tests=src \
-      -Dsonar.test.inclusions=**/*.spec.ts \
-      -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-      -Dsonar.host.url=$SONAR_HOST_URL \
-      -Dsonar.token=$SONAR_TOKEN
-  when:
-    event: [ pull_request ]
-  depends_on:
-  - frontend-tests
+  - name: frontend-sonar
+    image: sonarsource/sonar-scanner-cli:5
+    environment:
+      SONAR_HOST_URL:
+        from_secret: sonar_host
+      SONAR_TOKEN:
+        from_secret: sonar_token
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    commands:
+      - cd frontend
+      - |
+        case "$DRONE_TARGET_BRANCH" in
+          dev)         KEY=pharmacy-frontend-dev ;;
+          qa)          KEY=pharmacy-frontend-qa ;;
+          main|master) KEY=pharmacy-frontend-main ;;
+          *)           KEY=pharmacy-frontend-dev ;;
+        esac
+        sonar-scanner \
+          -Dsonar.projectKey=$KEY \
+          -Dsonar.sources=src \
+          -Dsonar.exclusions=**/*.spec.ts,**/dist/**,**/node_modules/**,**/.angular/**,**/coverage/**,**/e2e/**,**/cypress/**,**/assets/**,**/environments/**,**/*.config.js,**/*.config.ts \
+          -Dsonar.tests=src \
+          -Dsonar.test.inclusions=**/*.spec.ts \
+          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.token=$SONAR_TOKEN
+    when:
+      event: [ pull_request ]
+    depends_on:
+      - frontend-tests
 
-# -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
-# Genera pharmacy/target/*.jar para que el Dockerfile del BE pueda copiarlo
-- name: build-backend-artifact
-  image: maven:3.9-eclipse-temurin-17
-  commands:
-  - cd pharmacy
-  - mvn -B -DskipTests clean package
-  when:
-    event: [ push ]
-    branch: [ dev, qa, main, master ]
+  # -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
+  # Genera pharmacy/target/*.jar para que el Dockerfile del BE pueda copiarlo
+  - name: build-backend-artifact
+    image: maven:3.9-eclipse-temurin-17
+    commands:
+      - cd pharmacy
+      - mvn -B -DskipTests clean package
+    when:
+      event: [ push ]
+      branch: [ dev, qa, main, master ]
 
-# -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
-# Opción A: limpieza agresiva para evitar conflictos por container_name
-- name: deploy-dev
-  image: docker:26-cli
-  volumes:
-  - name: dockersock
-    path: /var/run/docker.sock
-  commands:
-  # Down del stack con project name fijo
-  - docker compose -p pharmacy-dev -f docker-compose.dev.yml down --remove-orphans || true
-  # Elimina contenedores con nombre fijo si quedaron vivos de corridas anteriores
-  - docker rm -f oracle-xe-dev-pharmacy backend-dev-pharmacy frontend-dev-pharmacy 2>/dev/null || true
-  # Limpia red si quedó colgada
-  - docker network rm pharmacy-dev-net 2>/dev/null || true
-  # Levanta con project name fijo
-  - docker compose -p pharmacy-dev -f docker-compose.dev.yml up -d --build
-  when:
-    event: [ push ]
-    branch: [ dev ]
-  depends_on:
-  - build-backend-artifact
+  # -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
+  # Opción A: limpieza agresiva para evitar conflictos por container_name
+  - name: deploy-dev
+    image: docker:26-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      # Down del stack con project name fijo
+      - docker compose -p pharmacy-dev -f docker-compose.dev.yml down --remove-orphans || true
+      # Elimina contenedores con nombre fijo si quedaron vivos de corridas anteriores
+      - docker rm -f oracle-xe-dev-pharmacy backend-dev-pharmacy frontend-dev-pharmacy 2>/dev/null || true
+      # Limpia red si quedó colgada
+      - docker network rm pharmacy-dev-net 2>/dev/null || true
+      # Levanta con project name fijo
+      - docker compose -p pharmacy-dev -f docker-compose.dev.yml up -d --build
+    when:
+      event: [ push ]
+      branch: [ dev ]
+    depends_on:
+      - build-backend-artifact
 
-- name: deploy-qa
-  image: docker:26-cli
-  volumes:
-  - name: dockersock
-    path: /var/run/docker.sock
-  commands:
-  - docker compose -p pharmacy-qa -f docker-compose.qa.yml down --remove-orphans || true
-  - docker rm -f oracle-xe-qa-pharmacy backend-qa-pharmacy frontend-qa-pharmacy 2>/dev/null || true
-  - docker network rm pharmacy-qa-net 2>/dev/null || true
-  - docker compose -p pharmacy-qa -f docker-compose.qa.yml up -d --build
-  when:
-    event: [ push ]
-    branch: [ qa ]
-  depends_on:
-  - build-backend-artifact
+  - name: deploy-qa
+    image: docker:26-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - docker compose -p pharmacy-qa -f docker-compose.qa.yml down --remove-orphans || true
+      - docker rm -f oracle-xe-qa-pharmacy backend-qa-pharmacy frontend-qa-pharmacy 2>/dev/null || true
+      - docker network rm pharmacy-qa-net 2>/dev/null || true
+      - docker compose -p pharmacy-qa -f docker-compose.qa.yml up -d --build
+    when:
+      event: [ push ]
+      branch: [ qa ]
+    depends_on:
+      - build-backend-artifact
 
-- name: deploy-prod
-  image: docker:26-cli
-  volumes:
-  - name: dockersock
-    path: /var/run/docker.sock
-  commands:
-  - docker compose -p pharmacy-prod -f docker-compose.prod.yml down --remove-orphans || true
-  - docker rm -f oracle-xe-prod-pharmacy backend-prod-pharmacy frontend-prod-pharmacy 2>/dev/null || true
-  - docker network rm pharmacy-prod-net 2>/dev/null || true
-  - docker compose -p pharmacy-prod -f docker-compose.prod.yml up -d --build
-  when:
-    event: [ push ]
-    branch: [ main, master ]
-  depends_on:
-  - build-backend-artifact
-
-# -------------------- NOTIFICACIÓN SI FALLA --------------------
-#- name: notify-on-failure
-#  image: drillster/drone-email
-#  settings:
-#    host:
-#      from_secret: smtp_host
-#    port: 587
-#    username:
-#      from_secret: smtp_user
-#    password:
-#      from_secret: smtp_pass
-#    from:
-#      from_secret: smtp_from
-#    recipients:
-#    - josegregoriocoronelcolombo@gmail.com
-#    - jflores@unis.edu.gt
-#    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
-    
-    #skip_verify: false
-    
-    #to:
-    #- josegregoriocoronelcolombo@gmail.com
-    #- jflores@unis.edu.gt
-#    body: |
-#      Repo: ${DRONE_REPO}
-#      Build: ${DRONE_BUILD_NUMBER}
-#      Branch: ${DRONE_BRANCH}
-#      Autor: ${DRONE_COMMIT_AUTHOR}
-#      Ver: ${DRONE_BUILD_LINK}
-#      Error: El Quality Gate falló en la etapa de SonarQube
-#  when:
-#    status:
-#      - failure
-    #status: [ failure ]
-    #event: [ pull_request ]
+  - name: deploy-prod
+    image: docker:26-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - docker compose -p pharmacy-prod -f docker-compose.prod.yml down --remove-orphans || true
+      - docker rm -f oracle-xe-prod-pharmacy backend-prod-pharmacy frontend-prod-pharmacy 2>/dev/null || true
+      - docker network rm pharmacy-prod-net 2>/dev/null || true
+      - docker compose -p pharmacy-prod -f docker-compose.prod.yml up -d --build
+    when:
+      event: [ push ]
+      branch: [ main, master ]
+    depends_on:
+      - build-backend-artifact
 
 volumes:
-- name: dockersock
-  host:
-    path: /var/run/docker.sock
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
 
 trigger:
   event: [ push, pull_request ]
   branch: [ dev, qa, main, master ]
 
-
+---
 # ===================== Pipeline 2: Notificación por fallo =====================
 kind: pipeline
 type: docker
