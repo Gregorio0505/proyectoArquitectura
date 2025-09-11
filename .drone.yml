@@ -146,7 +146,7 @@ steps:
 
 # -------------------- NOTIFICACIÓN SI FALLA --------------------
 - name: notify-on-failure
-  image: appleboy/drone-email
+  image: drillster/drone-email
   settings:
     host:
       from_secret: smtp_host
@@ -155,13 +155,18 @@ steps:
       from_secret: smtp_user
     password:
       from_secret: smtp_pass
-    from: josegregoriocoronelcolombo@gmail.com
-      #from_secret: smtp_from
-    skip_verify: false
-    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
-    to:
+    from:
+      from_secret: smtp_from
+    recipients:
     - josegregoriocoronelcolombo@gmail.com
     - jflores@unis.edu.gt
+    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
+    
+    #skip_verify: false
+    
+    #to:
+    #- josegregoriocoronelcolombo@gmail.com
+    #- jflores@unis.edu.gt
     body: |
       Repo: ${DRONE_REPO}
       Build: ${DRONE_BUILD_NUMBER}
@@ -170,7 +175,9 @@ steps:
       Ver: ${DRONE_BUILD_LINK}
       Error: El Quality Gate falló en la etapa de SonarQube
   when:
-    status: [ failure ]
+    status:
+      - failure
+    #status: [ failure ]
     #event: [ pull_request ]
 
 volumes:
