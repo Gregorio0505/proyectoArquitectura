@@ -145,38 +145,38 @@ steps:
   - build-backend-artifact
 
 # -------------------- NOTIFICACIÓN SI FALLA --------------------
-- name: notify-on-failure
-  image: drillster/drone-email
-  settings:
-    host:
-      from_secret: smtp_host
-    port: 587
-    username:
-      from_secret: smtp_user
-    password:
-      from_secret: smtp_pass
-    from:
-      from_secret: smtp_from
-    recipients:
-    - josegregoriocoronelcolombo@gmail.com
-    - jflores@unis.edu.gt
-    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
+#- name: notify-on-failure
+#  image: drillster/drone-email
+#  settings:
+#    host:
+#      from_secret: smtp_host
+#    port: 587
+#    username:
+#      from_secret: smtp_user
+#    password:
+#      from_secret: smtp_pass
+#    from:
+#      from_secret: smtp_from
+#    recipients:
+#    - josegregoriocoronelcolombo@gmail.com
+#    - jflores@unis.edu.gt
+#    subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
     
     #skip_verify: false
     
     #to:
     #- josegregoriocoronelcolombo@gmail.com
     #- jflores@unis.edu.gt
-    body: |
-      Repo: ${DRONE_REPO}
-      Build: ${DRONE_BUILD_NUMBER}
-      Branch: ${DRONE_BRANCH}
-      Autor: ${DRONE_COMMIT_AUTHOR}
-      Ver: ${DRONE_BUILD_LINK}
-      Error: El Quality Gate falló en la etapa de SonarQube
-  when:
-    status:
-      - failure
+#    body: |
+#      Repo: ${DRONE_REPO}
+#      Build: ${DRONE_BUILD_NUMBER}
+#      Branch: ${DRONE_BRANCH}
+#      Autor: ${DRONE_COMMIT_AUTHOR}
+#      Ver: ${DRONE_BUILD_LINK}
+#      Error: El Quality Gate falló en la etapa de SonarQube
+#  when:
+#    status:
+#      - failure
     #status: [ failure ]
     #event: [ pull_request ]
 
@@ -188,3 +188,44 @@ volumes:
 trigger:
   event: [ push, pull_request ]
   branch: [ dev, qa, main, master ]
+
+
+# ===================== Pipeline 2: Notificación por fallo =====================
+kind: pipeline
+type: docker
+name: Notify-On-Failure
+
+depends_on:
+  - CI-and-Deploy
+
+trigger:
+  status:
+    - failure
+  event: [ push, pull_request ]
+  branch: [ dev, qa, main, master ]
+
+steps:
+  - name: notify-email-failure
+    image: drillster/drone-email
+    settings:
+      host:
+        from_secret: smtp_host       # smtp.gmail.com
+      port: 587
+      username:
+        from_secret: smtp_user       # tu correo Gmail
+      password:
+        from_secret: smtp_pass       # App Password (16 caracteres)
+      from:
+        from_secret: smtp_from       # tu correo Gmail
+      recipients:
+        - josegregoriocoronelcolombo@gmail.com
+        - jflores@unis.edu.gt
+      subject: "[CI] Falló build en ${DRONE_REPO} #${DRONE_BUILD_NUMBER}"
+      body: |
+        Repo: ${DRONE_REPO}
+        Build: ${DRONE_BUILD_NUMBER}
+        Estado: ${DRONE_BUILD_STATUS}
+        Branch: ${DRONE_BRANCH}
+        Commit: ${DRONE_COMMIT_SHA}
+        Autor: ${DRONE_COMMIT_AUTHOR}
+        Enlace: ${DRONE_BUILD_LINK}
