@@ -65,6 +65,7 @@ public class AdminController {
         logger.info("Activating user with ID: " + id);
         
         Long roleId = activationData.get("roleId");
+        
         if (roleId == null) {
             logger.warning("Role ID is required for activation");
             return ResponseEntity.badRequest().body(Map.of("error", "Role ID is required"));
