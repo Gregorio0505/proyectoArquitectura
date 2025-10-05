@@ -1,5 +1,10 @@
 version: "3.8"
 
+networks:
+  pharmacy-prod_pharmacy-prod-net:
+    external: true
+
+
 services:
   drone-server:
     image: drone/drone:2
@@ -22,6 +27,8 @@ services:
       # Si quieres limitar quién puede activar repos:
       # DRONE_USER_FILTER: ${DRONE_ADMIN_USER}
       DRONE_LOGS_DEBUG: "true"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net   # <--- clave
 
 
 #  drone-runner:
@@ -54,3 +61,5 @@ services:
       DRONE_RUNNER_NAME: runner-1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - pharmacy-prod_pharmacy-prod-net   # <--- clave

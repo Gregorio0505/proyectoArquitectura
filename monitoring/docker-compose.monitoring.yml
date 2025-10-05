@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  pharmacy-prod_pharmacy-prod-net:
+    external: true
+    #name: pharmacy-prod_pharmacy-prod-net
+
+volumes:
+  prometheus_data:
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net
+
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks:
+      - pharmacy-prod_pharmacy-prod-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8082:8080"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  # mide el HOST; va en modo host (no necesita red)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro
+    restart: unless-stopped
+

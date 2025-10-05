@@ -152,7 +152,32 @@ volumes:
 
 trigger:
   event: [ push, pull_request ]
-  branch: [ dev, qa, main, master ]
+  #branch: [ dev, qa, main, master ]
+
+  # ===================== Pipeline 2: Notificación por fallo =====================
+  - name: push-metrics
+    image: curlimages/curl:8.8.0
+    when:
+      status: [ success, failure ]    # se ejecuta pase lo que pase
+    environment:
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    commands:
+      - START_TS=${DRONE_BUILD_STARTED}
+      - END_TS=$(date +%s)                    # ahora
+      - DURATION=$((END_TS-START_TS))
+      - STATUS=0; [ "${DRONE_BUILD_STATUS}" = "success" ] && STATUS=1
+      - REPO="${DRONE_REPO_NAME}"
+      - BRANCH="${DRONE_BRANCH}"
+      - BUILD="${DRONE_BUILD_NUMBER}"
+      - |
+        cat <<EOF | curl --silent --show-error --data-binary @- \
+          ${PUSHGATEWAY_URL}/metrics/job/${REPO}/instance/${BUILD}
+        # TYPE pipeline_duration_seconds gauge
+        pipeline_duration_seconds{repo="${REPO}",branch="${BRANCH}"} $DURATION
+        # TYPE pipeline_success gauge
+        pipeline_success{repo="${REPO}",branch="${BRANCH}"} $STATUS
+        EOF
+
 
 ---
 # ===================== Pipeline 2: Notificación por fallo =====================
@@ -194,3 +219,4 @@ steps:
         Commit: ${DRONE_COMMIT_SHA}
         Autor: ${DRONE_COMMIT_AUTHOR}
         Enlace: ${DRONE_BUILD_LINK}
+
