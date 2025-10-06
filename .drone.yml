@@ -150,7 +150,9 @@ steps:
       PUSHGATEWAY_URL: http://host.docker.internal:9091
     commands:
       - |
-        set -e
+        set -ex
+
+        # 1) Variables del build (con defaults por si algo no viene)
         START_TS="${DRONE_BUILD_STARTED:-$(date +%s)}"
         END_TS="$(date +%s)"
         DURATION="$((END_TS-START_TS))"
@@ -159,11 +161,17 @@ steps:
         BRANCH="${DRONE_BRANCH:-unknown}"
         BUILD="${DRONE_BUILD_NUMBER:-0}"
         PG="${PUSHGATEWAY_URL:-http://host.docker.internal:9091}"
+        URL="${PG}/metrics/job/${REPO}/instance/${BUILD}"
 
-        printf "%s\n%s\n" \
-          "pipeline_duration_seconds{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${DURATION}" \
-          "pipeline_success{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${STATUS}" \
-        | curl --fail --show-error --data-binary @- "${PG}/metrics/job/${REPO}/instance/${BUILD}"
+        echo "DEBUG -> PG=$PG URL=$URL REPO=$REPO BRANCH=$BRANCH BUILD=$BUILD DURATION=$DURATION STATUS=$STATUS"
+
+        # 2) Armamos el payload en un archivo .prom
+        echo "pipeline_duration_seconds{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${DURATION}" > /tmp/metrics.prom
+        echo "pipeline_success{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${STATUS}" >> /tmp/metrics.prom
+        echo "DEBUG payload:"; cat /tmp/metrics.prom
+
+        # 3) Enviamos al Pushgateway
+        curl --fail --show-error --data-binary @/tmp/metrics.prom "$URL"
 
 volumes:
   - name: dockersock
