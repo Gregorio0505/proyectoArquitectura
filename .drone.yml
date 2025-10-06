@@ -145,23 +145,27 @@ steps:
     when:
       status: [ success, failure ]           # corre pase lo que pase
     extra_hosts:
-      - host.docker.internal:host-gateway    # para resolver el host desde el contenedor
+      - host.docker.internal:host-gateway    # para alcanzar el host desde el contenedor
     environment:
+      # Usa el puerto publicado del host (9091:9091 en tu compose)
       PUSHGATEWAY_URL: http://host.docker.internal:9091
     commands:
-      - START_TS=${DRONE_BUILD_STARTED}
-      - END_TS=$(date +%s)
-      - DURATION=$((END_TS-START_TS))
+      - set -e
+      - START_TS="${DRONE_BUILD_STARTED:-$(date +%s)}"
+      - END_TS="$(date +%s)"
+      - DURATION="$((END_TS-START_TS))"
       - STATUS=0; [ "${DRONE_BUILD_STATUS}" = "success" ] && STATUS=1
-      - REPO="${DRONE_REPO_NAME}"
-      - BRANCH="${DRONE_BRANCH}"
-      - BUILD="${DRONE_BUILD_NUMBER}"
+      - REPO="${DRONE_REPO_NAME:-unknown}"
+      - BRANCH="${DRONE_BRANCH:-unknown}"
+      - BUILD="${DRONE_BUILD_NUMBER:-0}"
+      - PG="${PUSHGATEWAY_URL:-http://host.docker.internal:9091}"
+      # Enviar las métricas con printf (sin heredoc para evitar \n/escapes)
       - |
-        cat <<EOF | curl --silent --show-error --data-binary @- \
-          ${PUSHGATEWAY_URL}/metrics/job/${REPO}/instance/${BUILD}
-        pipeline_duration_seconds{repo="${REPO}",branch="${BRANCH}"} $DURATION
-        pipeline_success{repo="${REPO}",branch="${BRANCH}"} $STATUS
-        EOF
+        printf "%s\n%s\n" \
+          "pipeline_duration_seconds{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${DURATION}" \
+          "pipeline_success{repo=\"${REPO}\",branch=\"${BRANCH}\"} ${STATUS}" \
+        | curl --fail --show-error --data-binary @- "${PG}/metrics/job/${REPO}/instance/${BUILD}"
+
 
 volumes:
   - name: dockersock
