@@ -81,7 +81,6 @@ steps:
       - frontend-tests
 
   # -------------------- BUILD DE ARTEFACTO (post-merge) --------------------
-  # Genera pharmacy/target/*.jar para que el Dockerfile del BE pueda copiarlo
   - name: build-backend-artifact
     image: maven:3.9-eclipse-temurin-17
     commands:
@@ -92,20 +91,15 @@ steps:
       branch: [ dev, qa, main, master ]
 
   # -------------------- DEPLOY SOLO EN PUSH (post-merge) --------------------
-  # Opción A: limpieza agresiva para evitar conflictos por container_name
   - name: deploy-dev
     image: docker:26-cli
     volumes:
       - name: dockersock
         path: /var/run/docker.sock
     commands:
-      # Down del stack con project name fijo
       - docker compose -p pharmacy-dev -f docker-compose.dev.yml down --remove-orphans || true
-      # Elimina contenedores con nombre fijo si quedaron vivos de corridas anteriores
       - docker rm -f oracle-xe-dev-pharmacy backend-dev-pharmacy frontend-dev-pharmacy 2>/dev/null || true
-      # Limpia red si quedó colgada
       - docker network rm pharmacy-dev-net 2>/dev/null || true
-      # Levanta con project name fijo
       - docker compose -p pharmacy-dev -f docker-compose.dev.yml up -d --build
     when:
       event: [ push ]
@@ -145,25 +139,18 @@ steps:
     depends_on:
       - build-backend-artifact
 
-volumes:
-  - name: dockersock
-    host:
-      path: /var/run/docker.sock
-
-trigger:
-  event: [ push, pull_request ]
-  #branch: [ dev, qa, main, master ]
-
-  # ===================== Pipeline 2: Notificación por fallo =====================
+  # -------------------- MÉTRICAS DEL PIPELINE (Pushgateway) --------------------
   - name: push-metrics
     image: curlimages/curl:8.8.0
     when:
-      status: [ success, failure ]    # se ejecuta pase lo que pase
+      status: [ success, failure ]           # corre pase lo que pase
+    extra_hosts:
+      - host.docker.internal:host-gateway    # para resolver el host desde el contenedor
     environment:
-      PUSHGATEWAY_URL: http://pushgateway:9091
+      PUSHGATEWAY_URL: http://host.docker.internal:9091
     commands:
       - START_TS=${DRONE_BUILD_STARTED}
-      - END_TS=$(date +%s)                    # ahora
+      - END_TS=$(date +%s)
       - DURATION=$((END_TS-START_TS))
       - STATUS=0; [ "${DRONE_BUILD_STATUS}" = "success" ] && STATUS=1
       - REPO="${DRONE_REPO_NAME}"
@@ -172,13 +159,18 @@ trigger:
       - |
         cat <<EOF | curl --silent --show-error --data-binary @- \
           ${PUSHGATEWAY_URL}/metrics/job/${REPO}/instance/${BUILD}
-        # TYPE pipeline_duration_seconds gauge
         pipeline_duration_seconds{repo="${REPO}",branch="${BRANCH}"} $DURATION
-        # TYPE pipeline_success gauge
         pipeline_success{repo="${REPO}",branch="${BRANCH}"} $STATUS
         EOF
 
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
 
+trigger:
+  event: [ push, pull_request ]
+  branch: [ dev, qa, main, master ]
 ---
 # ===================== Pipeline 2: Notificación por fallo =====================
 kind: pipeline
@@ -189,8 +181,7 @@ depends_on:
   - CI-and-Deploy
 
 trigger:
-  status:
-    - failure
+  status: [ failure ]
   event: [ push, pull_request ]
   branch: [ dev, qa, main, master ]
 
@@ -199,14 +190,14 @@ steps:
     image: drillster/drone-email
     settings:
       host:
-        from_secret: smtp_host       # smtp.gmail.com
+        from_secret: smtp_host
       port: 587
       username:
-        from_secret: smtp_user       # tu correo Gmail
+        from_secret: smtp_user
       password:
-        from_secret: smtp_pass       # App Password (16 caracteres)
+        from_secret: smtp_pass
       from:
-        from_secret: smtp_from       # tu correo Gmail
+        from_secret: smtp_from
       recipients:
         - josegregoriocoronelcolombo@gmail.com
         - jflores@unis.edu.gt
@@ -219,4 +210,3 @@ steps:
         Commit: ${DRONE_COMMIT_SHA}
         Autor: ${DRONE_COMMIT_AUTHOR}
         Enlace: ${DRONE_BUILD_LINK}
-
