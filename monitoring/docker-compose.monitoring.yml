@@ -70,3 +70,17 @@ services:
       - /:/host:ro
     restart: unless-stopped
 
+  grafana:
+    image: grafana/grafana-oss:10.4.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - pharmacy-prod_pharmacy-prod-net   # la misma red que prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
