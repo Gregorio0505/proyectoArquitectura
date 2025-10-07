@@ -1,9 +1,9 @@
-version: '3.8'
+# docker-compose.monitoring.yml  (sin "version")
 
 networks:
-  pharmacy-prod_pharmacy-prod-net:
-    external: true
-    #name: pharmacy-prod_pharmacy-prod-net
+  pharmacy_net:
+    name: pharmacy-prod-net    # nombre estable en Docker
+    driver: bridge
 
 volumes:
   prometheus_data:
@@ -19,10 +19,11 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - pharmacy-prod_pharmacy-prod-net
+      - pharmacy_net
     volumes:
       - prometheus_data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
 
   pushgateway:
     image: prom/pushgateway:latest
@@ -30,7 +31,8 @@ services:
     ports:
       - "9091:9091"
     networks:
-      - pharmacy-prod_pharmacy-prod-net
+      - pharmacy_net
+    restart: unless-stopped
 
   blackbox:
     image: prom/blackbox-exporter:latest
@@ -41,7 +43,8 @@ services:
     volumes:
       - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
     networks:
-      - pharmacy-prod_pharmacy-prod-net
+      - pharmacy_net
+    restart: unless-stopped
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -49,21 +52,21 @@ services:
     ports:
       - "8082:8080"
     networks:
-      - pharmacy-prod_pharmacy-prod-net
+      - pharmacy_net
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+    restart: unless-stopped
 
-  # mide el HOST; va en modo host (no necesita red)
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
     ports:
       - "9100:9100"
     networks:
-      - pharmacy-prod_pharmacy-prod-net
+      - pharmacy_net
     command:
       - --path.rootfs=/host
     volumes:
@@ -76,7 +79,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - pharmacy-prod_pharmacy-prod-net   # la misma red que prometheus
+      - pharmacy_net
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -84,3 +87,31 @@ services:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+  netdata:
+    image: netdata/netdata:stable
+    container_name: netdata
+    hostname: netdata
+    ports:
+      - "19999:19999"
+    networks:
+      - pharmacy_net
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      # para ver el host y contenedores (solo-lectura donde aplica)
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # persistencia (opcional, útil)
+      - ./netdata/lib:/var/lib/netdata
+      - ./netdata/cache:/var/cache/netdata
+      - ./netdata/config:/etc/netdata
+    environment:
+      - NETDATA_CLAIM_AUTO=false
+    restart: unless-stopped

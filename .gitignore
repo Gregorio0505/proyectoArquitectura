@@ -52,3 +52,17 @@ oracle-data-qa/
 *.swp
 *.swo
 *.swn
+
+# --- runtime / state ---
+monitoring/netdata/lib/
+monitoring/netdata/cache/
+monitoring/netdata/config/context-meta.db
+monitoring/netdata/config/bearer_tokens/
+monitoring/netdata/config/dbengine-*/   # por si queda algún rastro
+
+# sqlite y otros artefactos de runtime
+drone-data/*.sqlite
+
+# backups y tgz si los tienes en el árbol
+*.tgz
+docker-backup-*/
