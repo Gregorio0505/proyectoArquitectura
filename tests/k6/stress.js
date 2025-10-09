@@ -32,7 +32,7 @@ export default function () {
 
   // 4️⃣ (opcional) Ejemplo POST si quieres probar escritura:  
   // const payload = JSON.stringify({ name: 'test', quantity: 1 });
-  // const headers = { headers: { 'Content-Type': 'application/json' } };
+  // const headers = { headers: { 'Content-Type': 'application/json' } };   
   // let postOrder = http.post(`${BASE_URL}/api/orders`, payload, headers);
   // check(postOrder, { '✅ /api/orders POST 201 Created': (r) => r.status === 201 });
 
