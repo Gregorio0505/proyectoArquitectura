@@ -30,7 +30,7 @@ export default function () {
   let orders = http.get(`${BASE_URL}/api/orders`);
   check(orders, { '✅ /api/orders 200 OK': (r) => r.status === 200 });
 
-  // 4️⃣ (opcional) Ejemplo POST si quieres probar escritura:
+  // 4️⃣ (opcional) Ejemplo POST si quieres probar escritura:  
   // const payload = JSON.stringify({ name: 'test', quantity: 1 });
   // const headers = { headers: { 'Content-Type': 'application/json' } };
   // let postOrder = http.post(`${BASE_URL}/api/orders`, payload, headers);
