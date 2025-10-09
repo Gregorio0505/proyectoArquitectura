@@ -24,7 +24,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <!-- No ponemos HTTP Defaults. Usamos URL completa en cada sampler con ${BASE_URL} -->
+        
 
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET ${BASE_URL}/health" enabled="true">
           <stringProp name="HTTPSampler.method">GET</stringProp>

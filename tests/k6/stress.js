@@ -4,18 +4,18 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.4/index.js';
 
 export const options = {
   stages: [
-    { duration: '30s', target: 20 },   // calentamiento
-    { duration: '2m',  target: 100 },  // incremento gradual
-    { duration: '3m',  target: 100 },  // carga estable
-    { duration: '30s', target: 0 },    // enfriamiento
+    { duration: '30s', target: 20 },   
+    { duration: '2m',  target: 100 },  
+    { duration: '3m',  target: 100 },  
+    { duration: '30s', target: 0 },    
   ],
   thresholds: {
-    http_req_failed: ['rate<0.01'],          // menos de 1% de fallos
-    http_req_duration: ['p(95)<800'],        // 95% de peticiones < 800ms
+    http_req_failed: ['rate<0.01'],         
+    http_req_duration: ['p(95)<800'],        
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8084'; // 🔥 puerto real de tu backend
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8084'; 
 
 export default function () {
   // 1️⃣ Endpoint liviano
