@@ -14,7 +14,7 @@
   </TestPlan>
   <hashTree>
     <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios Front" enabled="true">
-      <stringProp name="ThreadGroup.num_threads">${__P(users,100)}</stringProp>
+      <stringProp name="ThreadGroup.num_threads">${__P(users,1000)}</stringProp>
       <stringProp name="ThreadGroup.ramp_time">${__P(ramp,60)}</stringProp>
       <boolProp name="ThreadGroup.scheduler">false</boolProp>
       <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
