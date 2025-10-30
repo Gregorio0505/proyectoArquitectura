@@ -1,0 +1,371 @@
+apiVersion: 1
+groups:
+  # =================== APP ===================
+  - orgId: 1
+    name: app-performance
+    folder: Pharmacy Alerts
+    interval: 30s
+    rules:
+      # 1) CPU backend
+      - uid: cpu-backend
+        title: "Backend CPU alta"
+        condition: E
+        for: 5m
+        labels: { area: backend, metric: cpu }
+        annotations:
+          summary: "CPU backend alta (warning >75%, critical >90%)"
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'rate(container_cpu_usage_seconds_total{name=~".*backend-prod-pharmacy.*"}[1m]) * 100'
+              instant: false
+          # warning
+          - refId: C
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              reducer: avg
+              expression: "A"
+          - refId: D
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expression: "$C > 75"
+          # critical
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              reducer: avg
+              expression: "A"
+          - refId: F
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              expression: "$B > 90"
+          - refId: E
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [0] }   # true si warning
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["D"] }
+                - evaluator: { type: gt, params: [0] }   # true si critical
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["F"] }
+
+      # 2) Memoria backend (MiB)
+      - uid: mem-backend
+        title: "Backend Memoria alta"
+        condition: B
+        for: 5m
+        labels: { area: backend, metric: memory }
+        annotations:
+          summary: "Memoria backend alta (warning >320MiB, critical >380MiB)"
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'container_memory_usage_bytes{name=~".*backend-prod-pharmacy.*"} / 1024 / 1024'
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [320] }   # warning
+                  operator: { type: or }
+                  reducer: { type: avg }
+                  query: { params: ["A"] }
+                - evaluator: { type: gt, params: [380] }   # critical
+                  operator: { type: or }
+                  reducer: { type: avg }
+                  query: { params: ["A"] }
+
+      # 3) Red backend (kB/s aprox)
+      - uid: net-backend
+        title: "Backend Tráfico de red alto"
+        condition: D
+        for: 2m
+        labels: { area: backend, metric: network }
+        annotations:
+            summary: "Red backend alta (warning >600kB/s 2m, critical >900kB/s 1m)"
+        data:
+          - refId: RX
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expr: 'rate(container_network_receive_bytes_total{name=~".*backend-prod-pharmacy.*"}[1m]) / 1024'
+          - refId: TX
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expr: 'rate(container_network_transmit_bytes_total{name=~".*backend-prod-pharmacy.*"}[1m]) / 1024'
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expression: "$RX + $TX"
+          # warning
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              reducer: avg
+              expression: "A"
+          - refId: C
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expression: "$B > 600"
+          # critical
+          - refId: C2
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 60, to: 0 }
+            model:
+              reducer: avg
+              expression: "A"
+          - refId: CRIT
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 60, to: 0 }
+            model:
+              expression: "$C2 > 900"
+          - refId: D
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["C"] }
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["CRIT"] }
+
+      # 4) Latencia p95 backend
+      - uid: latency-backend
+        title: "Backend p95 alto"
+        condition: B
+        for: 10m
+        labels: { area: backend, metric: latency }
+        annotations:
+          summary: "Latencia p95 alta (warning >250ms 5m, critical >1s 3m)"
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'quantile_over_time(0.95, probe_duration_seconds{job="blackbox_http", instance="http://backend-prod-pharmacy:8080/actuator/health"}[15m])'
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [0.25] }  # 250ms
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["A"] }
+                - evaluator: { type: gt, params: [1] }     # 1s
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["A"] }
+
+  # =================== PIPELINE (DRONE) ===================
+  - orgId: 1
+    name: pipeline
+    folder: Pharmacy Alerts
+    interval: 30s
+    rules:
+      # 5) CPU drone
+      - uid: cpu-drone
+        title: "Drone CPU alta"
+        condition: E
+        for: 3m
+        labels: { area: ci, metric: cpu }
+        annotations: { summary: "CPU Drone alta (warning >150%, critical >250%)" }
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              expr: 'rate(container_cpu_usage_seconds_total{name=~".*drone.*"}[1m]) * 100'
+              instant: false
+          - refId: C
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 180, to: 0 }
+            model: { reducer: avg, expression: "A" }
+          - refId: D
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 180, to: 0 }
+            model: { expression: "$C > 150" }
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 120, to: 0 }
+            model: { reducer: avg, expression: "A" }
+          - refId: F
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 120, to: 0 }
+            model: { expression: "$B > 250" }
+          - refId: E
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["D"] }
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["F"] }
+
+      # 6) Memoria drone (MiB)
+      - uid: mem-drone
+        title: "Drone Memoria alta"
+        condition: B
+        for: 5m
+        labels: { area: ci, metric: memory }
+        annotations: { summary: "Memoria Drone alta (warning >750MiB, critical >1024MiB)" }
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'container_memory_usage_bytes{name=~".*drone.*"} / 1024 / 1024'
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [750] }
+                  operator: { type: or }
+                  reducer: { type: avg }
+                  query: { params: ["A"] }
+                - evaluator: { type: gt, params: [1024] }
+                  operator: { type: or }
+                  reducer: { type: avg }
+                  query: { params: ["A"] }
+
+      # 7) Red drone (MB/s)
+      - uid: net-drone
+        title: "Drone Tráfico de red alto"
+        condition: D
+        for: 2m
+        labels: { area: ci, metric: network }
+        annotations: { summary: "Red Drone alta (warning >4MB/s, critical >10MB/s)" }
+        data:
+          - refId: RX
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expr: 'rate(container_network_receive_bytes_total{name=~".*drone.*"}[1m]) / (1024*1024)'
+          - refId: TX
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expr: 'rate(container_network_transmit_bytes_total{name=~".*drone.*"}[1m]) / (1024*1024)'
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              expression: "$RX + $TX"
+          - refId: W
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 120, to: 0 }
+            model: { reducer: avg, expression: "A" }
+          - refId: WOK
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 120, to: 0 }
+            model: { expression: "$W > 4" }
+          - refId: K
+            datasourceUid: prometheusDS
+            queryType: reduce
+            relativeTimeRange: { from: 60, to: 0 }
+            model: { reducer: avg, expression: "A" }
+          - refId: CRIT
+            datasourceUid: prometheusDS
+            queryType: math
+            relativeTimeRange: { from: 60, to: 0 }
+            model: { expression: "$K > 10" }
+          - refId: D
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 120, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["WOK"] }
+                - evaluator: { type: gt, params: [0] }
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["CRIT"] }
+
+      # 8) Duración pipeline
+      - uid: pipeline-duration
+        title: "Pipeline lento"
+        condition: B
+        for: 1m
+        labels: { area: ci, metric: duration }
+        annotations: { summary: "Duración pipeline (warning >15m, critical >30m)" }
+        data:
+          - refId: A
+            datasourceUid: prometheusDS
+            queryType: timeSeriesQuery
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              expr: 'pipeline_duration_seconds{repo="proyectoArquitectura"}'
+          - refId: B
+            datasourceUid: prometheusDS
+            queryType: classic_conditions
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              conditions:
+                - evaluator: { type: gt, params: [900] }    # 15m
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["A"] }
+                - evaluator: { type: gt, params: [1800] }   # 30m
+                  operator: { type: or }
+                  reducer: { type: last }
+                  query: { params: ["A"] }

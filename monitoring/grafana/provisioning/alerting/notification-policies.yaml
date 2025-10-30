@@ -1,0 +1,6 @@
+apiVersion: 1
+policies:
+  - orgId: 1
+    receiver: all-default     # <- ¡sin continue aquí!
+    group_by: ["alertname"]
+    # sin routes: todo va a email + Slack

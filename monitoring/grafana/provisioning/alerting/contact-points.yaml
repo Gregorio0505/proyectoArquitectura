@@ -1,0 +1,14 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: all-default
+    receivers:
+      - uid: email-default
+        type: email
+        settings:
+          addresses: "josegregoriocoronelcolombo@gmail.com,jflores@unis.edu.gt"
+
+      - uid: slack-default
+        type: slack
+        settings:
+          url: "https://hooks.slack.com/services/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"

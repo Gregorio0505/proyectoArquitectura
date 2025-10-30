@@ -83,14 +83,28 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      # --- SMTP Gmail para enviar correos ---
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=josegregoriocoronelcolombo@gmail.com
+      - GF_SMTP_PASSWORD=gylmovybcjfhlhvv
+      - GF_SMTP_FROM_ADDRESS=josegregoriocoronelcolombo@gmail.com
+      - GF_SMTP_FROM_NAME=Grafana Alerts
+      - GF_SMTP_STARTTLS_POLICY=OpportunisticStartTLS
     volumes:
+      #- grafana-data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     restart: unless-stopped
 
   netdata:
-    image: netdata/netdata:stable
+    build: 
+      context: ./netdata
+      dockerfile: Dockerfile
+    image: netdata-with-mail:latest
+    #image: netdata/netdata:stable
     container_name: netdata
     hostname: netdata
     ports:
