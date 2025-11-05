@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.2">
+<hashTree>
+  <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Stress Test - Pharmacy Front" enabled="true">
+    <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+      <collectionProp name="Arguments.arguments">
+        <elementProp name="BASE_URL" elementType="Argument">
+          <stringProp name="Argument.name">BASE_URL</stringProp>
+          <stringProp name="Argument.value">${__P(BASE_URL,http://localhost:4302)}</stringProp>
+          <stringProp name="Argument.metadata">=</stringProp>
+        </elementProp>
+      </collectionProp>
+    </elementProp>
+  </TestPlan>
+  <hashTree>
+    <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Usuarios Front" enabled="true">
+      <stringProp name="ThreadGroup.num_threads">${__P(users,1000)}</stringProp>
+      <stringProp name="ThreadGroup.ramp_time">${__P(ramp,60)}</stringProp>
+      <boolProp name="ThreadGroup.scheduler">false</boolProp>
+      <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+      <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+        <boolProp name="LoopController.continue_forever">false</boolProp>
+        <stringProp name="LoopController.loops">${__P(loop,3)}</stringProp>
+      </elementProp>
+    </ThreadGroup>
+    <hashTree>
+      <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET ${BASE_URL}/" enabled="true">
+        <stringProp name="HTTPSampler.method">GET</stringProp>
+        <stringProp name="HTTPSampler.path">${BASE_URL}/</stringProp>
+        <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+      </HTTPSamplerProxy>
+      <hashTree/>
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <stringProp name="filename">tests/jmeter/out/results_frontend.jtl</stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</hashTree>
+</jmeterTestPlan>

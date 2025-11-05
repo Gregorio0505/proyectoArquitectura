@@ -1,0 +1,131 @@
+# docker-compose.monitoring.yml  (sin "version")
+
+networks:
+  pharmacy_net:
+    name: pharmacy-prod-net    # nombre estable en Docker
+    driver: bridge
+
+volumes:
+  prometheus_data:
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    networks:
+      - pharmacy_net
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - pharmacy_net
+    restart: unless-stopped
+
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks:
+      - pharmacy_net
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8087:8080"
+    networks:
+      - pharmacy_net
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - pharmacy_net
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:10.4.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - pharmacy_net
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # --- SMTP Gmail para enviar correos ---
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=josegregoriocoronelcolombo@gmail.com
+      - GF_SMTP_PASSWORD=gylmovybcjfhlhvv
+      - GF_SMTP_FROM_ADDRESS=josegregoriocoronelcolombo@gmail.com
+      - GF_SMTP_FROM_NAME=Grafana Alerts
+      - GF_SMTP_STARTTLS_POLICY=OpportunisticStartTLS
+    volumes:
+      #- grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+  netdata:
+    build: 
+      context: ./netdata
+      dockerfile: Dockerfile
+    image: netdata-with-mail:latest
+    #image: netdata/netdata:stable
+    container_name: netdata
+    hostname: netdata
+    ports:
+      - "19999:19999"
+    networks:
+      - pharmacy_net
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      # para ver el host y contenedores (solo-lectura donde aplica)
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # persistencia (opcional, útil)
+      - ./netdata/lib:/var/lib/netdata
+      - ./netdata/cache:/var/cache/netdata
+      - ./netdata/config:/etc/netdata
+    environment:
+      - NETDATA_CLAIM_AUTO=false
+    restart: unless-stopped
