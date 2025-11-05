@@ -29,7 +29,7 @@ services:
       - sonar-data:/opt/sonarqube/data
       - sonar-logs:/opt/sonarqube/logs
       - sonar-extensions:/opt/sonarqube/extensions
-
+ 
 volumes:
   sonar-pg:
   sonar-data:
