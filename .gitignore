@@ -66,3 +66,5 @@ drone-data/*.sqlite
 # backups y tgz si los tienes en el árbol
 *.tgz
 docker-backup-*/
+monitoring/grafana/provisioning/alerting/contact-points.yaml
+monitoring/netdata/config/health_alarm_notify.conf
