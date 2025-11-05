@@ -1,5 +1,10 @@
-FROM openjdk:17-jdk-alpine
+#FROM openjdk:17-jdk-alpine
+#WORKDIR /app
+#COPY target/*.jar app.jar
+# El perfil de Spring lo manejas con SPRING_PROFILES_ACTIVE
+#ENTRYPOINT ["java", "-jar", "app.jar"]
+
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY target/*.jar app.jar
-# El perfil de Spring lo manejas con SPRING_PROFILES_ACTIVE
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
