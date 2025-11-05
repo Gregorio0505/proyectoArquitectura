@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+
+  # HOST
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # CONTENEDORES (app)
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # ENDPOINTS HTTP (app) mediante Blackbox
+  - job_name: blackbox_http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://backend-prod-pharmacy:8080/actuator/health   # <--- AJUSTA si tu health es otro
+          - http://frontend-prod-pharmacy:80/                   # <--- landing del front
+          - http://drone-server/                                # <--- UI de Drone en la red
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
