@@ -207,7 +207,7 @@ groups:
         condition: E
         for: 3m
         labels: { area: ci, metric: cpu }
-        annotations: { summary: "CPU Drone alta (warning >150%, critical >250%)" }
+        annotations: { summary: "CPU Drone alta (warning >50%, critical >75%)" }
         data:
           - refId: A
             datasourceUid: prometheusDS
@@ -347,7 +347,7 @@ groups:
         condition: B
         for: 1m
         labels: { area: ci, metric: duration }
-        annotations: { summary: "Duración pipeline (warning >15m, critical >30m)" }
+        annotations: { summary: "Duración pipeline (warning >5m, critical >10m)" }
         data:
           - refId: A
             datasourceUid: prometheusDS
